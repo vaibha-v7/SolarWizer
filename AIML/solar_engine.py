@@ -169,7 +169,7 @@ def run_simulation(
 
     # Results
     annual_energy = df["ac_power"].sum() / 1000
-    monthly_energy = df["ac_power"].resample('M').sum() / 1000
+    monthly_energy = df["ac_power"].resample('ME').sum() / 1000
 
     monthly_dict = {
         m.strftime('%b'): round(v, 2)
