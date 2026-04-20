@@ -1,0 +1,16 @@
+https://pvwatts-lite-pvlib.onrender.com/predict 
+
+{
+  "lat": -90,
+  "lon": -180,
+  "system_size_kw": 4,
+  "tilt": 25,
+  "azimuth": 180,
+  "shading_factor": 0.95,
+  "losses": [
+    2,
+    3,
+    2,
+    1
+  ]
+}
