@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from pydantic import BaseModel, Field
 from typing import List
 from solar_engine import run_simulation
+# NEW 
 from forecast import generate_7day_forecast
 from datetime import datetime
 from fastapi.middleware.cors import CORSMiddleware
@@ -9,16 +10,13 @@ from fastapi.middleware.cors import CORSMiddleware
 
 
 app = FastAPI()
-
-# Add CORS middleware for frontend-backend communication
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, specify your frontend URL
+    allow_origins=["*"],  # allow all for now
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["*"],  # VERY IMPORTANT
     allow_headers=["*"],
 )
-
 
 class SolarInput(BaseModel):
     lat: float = Field(..., ge=-90, le=90, description="Latitude (-90 to 90)")

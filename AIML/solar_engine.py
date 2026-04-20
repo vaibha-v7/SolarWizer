@@ -71,13 +71,13 @@ def fetch_nasa_data(lat, lon, start=2023, end=2023):
 
 # ✅ MAIN FUNCTION
 def run_simulation(
-        lat,
-        lon,
-        system_size_kw=4,
-        tilt=25,
-        azimuth=180,
-        losses=[2, 3, 2, 1],
-        shading_factor=0.95
+    lat,
+    lon,
+    system_size_kw=4,
+    tilt=25,
+    azimuth=180,
+    losses=[2, 3, 2, 1],
+    shading_factor=0.95
 ):
     # Define FIRST
     location = Location(lat, lon, tz='Asia/Kolkata')
