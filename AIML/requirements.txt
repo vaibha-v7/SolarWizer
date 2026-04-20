@@ -1,1 +1,5 @@
-
+fastapi
+uvicorn
+pvlib
+pandas
+requests
