@@ -14,3 +14,10 @@ https://pvwatts-lite-pvlib.onrender.com/predict
     1
   ]
 }
+# Losses values Sample 
+losses = {
+    "soiling": 2,
+    "inverter": 3,
+    "wiring": 2,
+    "misc": 1
+}
