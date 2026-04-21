@@ -7,8 +7,12 @@ from datetime import datetime
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import HTTPException
 import requests
+from dotenv import load_dotenv
+import os
 
+load_dotenv()
 
+PVWATTS_API_KEY = os.getenv("PVWATTS_API_KEY")
 
 app = FastAPI()
 
@@ -74,7 +78,7 @@ def call_pvwatts(data: SolarInput):
     total_losses = max(sum(data.losses), 15)
 
     params = {
-        "api_key": "BlGc6JANbdiNXiK7sEbac8aI4liW5acfleTfSuLc",
+        "api_key": PVWATTS_API_KEY,
         "lat": data.lat,
         "lon": data.lon,
         "system_capacity": data.system_size_kw,
