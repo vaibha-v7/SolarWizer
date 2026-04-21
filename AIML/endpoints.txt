@@ -154,3 +154,23 @@ Output Sample: {
     440.0627703594034
   ]
 }
+
+# https://pvwatts-lite-pvlib.onrender.com/savings
+
+Input: {
+  "connected_load_kw": 4,
+  "monthly_units": 500,
+  "monthly_bill": 2000,
+  "installation_cost": 150000,
+  "cost_per_kw": 6
+}
+Output: {
+  "solar_system_capacity_kw": 4,
+  "annual_generation_kwh": 6000,
+  "annual_savings_rs": 24000,
+  "system_cost_rs": 150000,
+  "payback_years": 6.25,
+  "roi_percent": 16,
+  "co2_saved_kg": 4920,
+  "trees_equivalent": 234.28571428571428
+}
