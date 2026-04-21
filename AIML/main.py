@@ -2,21 +2,25 @@ from fastapi import FastAPI
 from pydantic import BaseModel, Field
 from typing import List
 from solar_engine import run_simulation
-# NEW 
 from forecast import generate_7day_forecast
 from datetime import datetime
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi import HTTPException
+import requests
 
 
 
 app = FastAPI()
+
+# Add CORS middleware for frontend-backend communication
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # allow all for now
+    allow_origins=["*"],  # In production, specify your frontend URL
     allow_credentials=True,
-    allow_methods=["*"],  # VERY IMPORTANT
+    allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 class SolarInput(BaseModel):
     lat: float = Field(..., ge=-90, le=90, description="Latitude (-90 to 90)")
@@ -32,6 +36,69 @@ class SolarInput(BaseModel):
         default=[2, 3, 2, 1],
         description="List of loss percentages"
     )
+
+
+def call_pvgis(data: SolarInput):
+    url = "https://re.jrc.ec.europa.eu/api/v5_2/PVcalc"
+
+    # 🔥 Increase realistic losses
+    total_losses = max(sum(data.losses), 15)
+
+    params = {
+        "lat": data.lat,
+        "lon": data.lon,
+        "peakpower": data.system_size_kw,
+        "loss": total_losses,   # 🔥 key change
+        "angle": data.tilt,
+        "aspect": data.azimuth - 180,
+        "outputformat": "json"
+    }
+
+    response = requests.get(url, params=params)
+    result = response.json()
+
+    return {
+        "source": "PVGIS",
+        "mode": "realistic",
+        "annual_energy_kwh": result["outputs"]["totals"]["fixed"]["E_y"],
+        "monthly_energy_kwh": result["outputs"]["monthly"]["fixed"]
+    }
+
+
+
+
+def call_pvwatts(data: SolarInput):
+    url = "https://developer.nrel.gov/api/pvwatts/v8.json"
+
+    # 🔥 Use realistic default if user gives low loss
+    total_losses = max(sum(data.losses), 15)
+
+    params = {
+        "api_key": "BlGc6JANbdiNXiK7sEbac8aI4liW5acfleTfSuLc",
+        "lat": data.lat,
+        "lon": data.lon,
+        "system_capacity": data.system_size_kw,
+        "tilt": data.tilt,
+        "azimuth": data.azimuth,
+
+        # 🔥 CALIBRATION PARAMETERS
+        "losses": total_losses,
+        "array_type": 0,      # rooftop (realistic)
+        "module_type": 0,     # standard module
+        "dc_ac_ratio": 1.1    # slightly conservative
+    }
+
+    response = requests.get(url, params=params)
+    result = response.json()
+
+    return {
+        "source": "PVWatts",
+        "mode": "realistic",
+        "annual_energy_kwh": result["outputs"]["ac_annual"],
+        "monthly_energy_kwh": result["outputs"]["ac_monthly"]
+    }
+
+
 
 
 @app.post("/predict")
@@ -73,3 +140,11 @@ def predict(data: SolarInput):
     # NEW END
     return result
 
+@app.post("/predict1")
+def predict_pvgis(data: SolarInput):
+    return call_pvgis(data)
+
+
+@app.post("/predict2")
+def predict_pvwatts(data: SolarInput):
+    return call_pvwatts(data)
