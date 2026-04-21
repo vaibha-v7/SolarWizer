@@ -1,0 +1,176 @@
+# https://pvwatts-lite-pvlib.onrender.com/predict 
+
+{
+  "lat": -90,
+  "lon": -180,
+  "system_size_kw": 4,
+  "tilt": 25,
+  "azimuth": 180,
+  "shading_factor": 0.95,
+  "losses": [
+    2,
+    3,
+    2,
+    1
+  ]
+}
+# Losses values Sample 
+losses = {
+    "soiling": 2,
+    "inverter": 3,
+    "wiring": 2,
+    "misc": 1
+}
+
+
+# https://pvwatts-lite-pvlib.onrender.com/predict1
+
+PVGIS Output 
+Input : Same as above 
+Output Sample: {
+  "source": "PVGIS",
+  "mode": "realistic",
+  "annual_energy_kwh": 6139.28,
+  "monthly_energy_kwh": [
+    {
+      "month": 1,
+      "E_d": 17.03,
+      "E_m": 527.92,
+      "H(i)_d": 5.44,
+      "H(i)_m": 168.71,
+      "SD_m": 44.64
+    },
+    {
+      "month": 2,
+      "E_d": 18.7,
+      "E_m": 523.54,
+      "H(i)_d": 6.12,
+      "H(i)_m": 171.24,
+      "SD_m": 32.32
+    },
+    {
+      "month": 3,
+      "E_d": 20.06,
+      "E_m": 621.88,
+      "H(i)_d": 6.85,
+      "H(i)_m": 212.29,
+      "SD_m": 20.56
+    },
+    {
+      "month": 4,
+      "E_d": 20.46,
+      "E_m": 613.82,
+      "H(i)_d": 7.21,
+      "H(i)_m": 216.18,
+      "SD_m": 14.47
+    },
+    {
+      "month": 5,
+      "E_d": 19.66,
+      "E_m": 609.55,
+      "H(i)_d": 6.99,
+      "H(i)_m": 216.82,
+      "SD_m": 13.52
+    },
+    {
+      "month": 6,
+      "E_d": 16.34,
+      "E_m": 490.11,
+      "H(i)_d": 5.66,
+      "H(i)_m": 169.73,
+      "SD_m": 66.8
+    },
+    {
+      "month": 7,
+      "E_d": 11.68,
+      "E_m": 362.08,
+      "H(i)_d": 4,
+      "H(i)_m": 123.93,
+      "SD_m": 35.66
+    },
+    {
+      "month": 8,
+      "E_d": 12.62,
+      "E_m": 391.07,
+      "H(i)_d": 4.25,
+      "H(i)_m": 131.63,
+      "SD_m": 40.82
+    },
+    {
+      "month": 9,
+      "E_d": 14.5,
+      "E_m": 434.95,
+      "H(i)_d": 4.9,
+      "H(i)_m": 146.91,
+      "SD_m": 54.93
+    },
+    {
+      "month": 10,
+      "E_d": 17.27,
+      "E_m": 535.47,
+      "H(i)_d": 5.84,
+      "H(i)_m": 181.01,
+      "SD_m": 34.73
+    },
+    {
+      "month": 11,
+      "E_d": 17.11,
+      "E_m": 513.28,
+      "H(i)_d": 5.7,
+      "H(i)_m": 171.11,
+      "SD_m": 23.35
+    },
+    {
+      "month": 12,
+      "E_d": 16.63,
+      "E_m": 515.61,
+      "H(i)_d": 5.38,
+      "H(i)_m": 166.72,
+      "SD_m": 19.52
+    }
+  ]
+}
+
+
+# https://pvwatts-lite-pvlib.onrender.com/predict2
+PW Watts Model 
+Input : Same as above
+Output Sample: {
+  "source": "PVWatts",
+  "mode": "realistic",
+  "annual_energy_kwh": 6072.546940109788,
+  "monthly_energy_kwh": [
+    448.0111803229117,
+    492.2147612170458,
+    575.1044719349162,
+    588.7147949286178,
+    594.3733873184439,
+    519.4312370101098,
+    452.9062818890735,
+    483.2362821244969,
+    487.8470473508997,
+    546.3263461374021,
+    444.3183795164618,
+    440.0627703594034
+  ]
+}
+
+# https://pvwatts-lite-pvlib.onrender.com/savings
+
+Input: {
+  "connected_load_kw": 4,
+  "monthly_units": 500,
+  "monthly_bill": 2000,
+  "installation_cost": 150000,
+  "cost_per_kw": 6
+}
+Output: {
+  "solar_system_capacity_kw": 4,
+  "annual_generation_kwh": 6000,
+  "annual_savings_rs": 24000,
+  "system_cost_rs": 150000,
+  "payback_years": 6.25,
+  "roi_percent": 16,
+  "co2_saved_kg": 4920,
+  "trees_equivalent": 234.28571428571428
+}

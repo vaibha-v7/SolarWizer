@@ -2,21 +2,29 @@ from fastapi import FastAPI
 from pydantic import BaseModel, Field
 from typing import List
 from solar_engine import run_simulation
-# NEW 
 from forecast import generate_7day_forecast
 from datetime import datetime
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi import HTTPException
+import requests
+from dotenv import load_dotenv
+import os
 
+load_dotenv()
 
+PVWATTS_API_KEY = os.getenv("PVWATTS_API_KEY")
 
 app = FastAPI()
+
+# Add CORS middleware for frontend-backend communication
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # allow all for now
+    allow_origins=["*"],  # In production, specify your frontend URL
     allow_credentials=True,
-    allow_methods=["*"],  # VERY IMPORTANT
+    allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 class SolarInput(BaseModel):
     lat: float = Field(..., ge=-90, le=90, description="Latitude (-90 to 90)")
@@ -32,6 +40,76 @@ class SolarInput(BaseModel):
         default=[2, 3, 2, 1],
         description="List of loss percentages"
     )
+
+
+def call_pvgis(data: SolarInput):
+    url = "https://re.jrc.ec.europa.eu/api/v5_2/PVcalc"
+
+    # 🔥 Increase realistic losses
+    total_losses = max(sum(data.losses), 15)
+
+    params = {
+        "lat": data.lat,
+        "lon": data.lon,
+        "peakpower": data.system_size_kw,
+        "loss": total_losses,   # 🔥 key change
+        "angle": data.tilt,
+        "aspect": data.azimuth - 180,
+        "outputformat": "json"
+    }
+
+    response = requests.get(url, params=params)
+    result = response.json()
+
+    return {
+        "source": "PVGIS",
+        "mode": "realistic",
+        "annual_energy_kwh": result["outputs"]["totals"]["fixed"]["E_y"],
+        "monthly_energy_kwh": result["outputs"]["monthly"]["fixed"]
+    }
+
+
+
+
+def call_pvwatts(data: SolarInput):
+    url = "https://developer.nrel.gov/api/pvwatts/v8.json"
+
+    # 🔥 Use realistic default if user gives low loss
+    total_losses = max(sum(data.losses), 15)
+
+    params = {
+        "api_key": PVWATTS_API_KEY,
+        "lat": data.lat,
+        "lon": data.lon,
+        "system_capacity": data.system_size_kw,
+        "tilt": data.tilt,
+        "azimuth": data.azimuth,
+
+        # 🔥 CALIBRATION PARAMETERS
+        "losses": total_losses,
+        "array_type": 0,      # rooftop (realistic)
+        "module_type": 0,     # standard module
+        "dc_ac_ratio": 1.1    # slightly conservative
+    }
+
+    response = requests.get(url, params=params)
+    result = response.json()
+
+    return {
+        "source": "PVWatts",
+        "mode": "realistic",
+        "annual_energy_kwh": result["outputs"]["ac_annual"],
+        "monthly_energy_kwh": result["outputs"]["ac_monthly"]
+    }
+
+
+class SavingsInput(BaseModel):
+    connected_load_kw: float   # sanctioned load (max installable)
+    monthly_units: float       # avg kWh per month
+    monthly_bill: float        # ₹
+    installation_cost: float   # ₹ total OR
+    cost_per_kw: float         # ₹/kW
+
 
 
 @app.post("/predict")
@@ -73,3 +151,51 @@ def predict(data: SolarInput):
     # NEW END
     return result
 
+@app.post("/predict1")
+def predict_pvgis(data: SolarInput):
+    return call_pvgis(data)
+
+
+@app.post("/predict2")
+def predict_pvwatts(data: SolarInput):
+    return call_pvwatts(data)
+
+
+@app.post("/savings")
+def calculate_savings(data: SavingsInput):
+
+    unit_rate = data.monthly_bill / data.monthly_units
+
+    system_size_kw = data.connected_load_kw
+    annual_units = data.monthly_units * 12
+
+    generation_per_kw = 1500
+    annual_generation = system_size_kw * generation_per_kw
+
+    usable_energy = min(annual_units, annual_generation)
+
+    annual_savings = usable_energy * unit_rate
+
+    system_cost = (
+        data.installation_cost
+        if data.installation_cost > 0
+        else system_size_kw * data.cost_per_kw
+    )
+
+    payback = system_cost / annual_savings if annual_savings > 0 else 0
+
+    roi = (annual_savings / system_cost) * 100 if system_cost > 0 else 0
+
+    co2_saved = annual_generation * 0.82
+    trees = co2_saved / 21
+
+    return {
+        "solar_system_capacity_kw": system_size_kw,
+        "annual_generation_kwh": annual_generation,
+        "annual_savings_rs": annual_savings,
+        "system_cost_rs": system_cost,
+        "payback_years": payback,
+        "roi_percent": roi,
+        "co2_saved_kg": co2_saved,
+        "trees_equivalent": trees
+    }
