@@ -103,6 +103,13 @@ def call_pvwatts(data: SolarInput):
     }
 
 
+class SavingsInput(BaseModel):
+    connected_load_kw: float   # sanctioned load (max installable)
+    monthly_units: float       # avg kWh per month
+    monthly_bill: float        # ₹
+    installation_cost: float   # ₹ total OR
+    cost_per_kw: float         # ₹/kW
+
 
 
 @app.post("/predict")
@@ -152,3 +159,43 @@ def predict_pvgis(data: SolarInput):
 @app.post("/predict2")
 def predict_pvwatts(data: SolarInput):
     return call_pvwatts(data)
+
+
+@app.post("/savings")
+def calculate_savings(data: SavingsInput):
+
+    unit_rate = data.monthly_bill / data.monthly_units
+
+    system_size_kw = data.connected_load_kw
+    annual_units = data.monthly_units * 12
+
+    generation_per_kw = 1500
+    annual_generation = system_size_kw * generation_per_kw
+
+    usable_energy = min(annual_units, annual_generation)
+
+    annual_savings = usable_energy * unit_rate
+
+    system_cost = (
+        data.installation_cost
+        if data.installation_cost > 0
+        else system_size_kw * data.cost_per_kw
+    )
+
+    payback = system_cost / annual_savings if annual_savings > 0 else 0
+
+    roi = (annual_savings / system_cost) * 100 if system_cost > 0 else 0
+
+    co2_saved = annual_generation * 0.82
+    trees = co2_saved / 21
+
+    return {
+        "solar_system_capacity_kw": system_size_kw,
+        "annual_generation_kwh": annual_generation,
+        "annual_savings_rs": annual_savings,
+        "system_cost_rs": system_cost,
+        "payback_years": payback,
+        "roi_percent": roi,
+        "co2_saved_kg": co2_saved,
+        "trees_equivalent": trees
+    }
