@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 
-const dataSchema = new mongoose.Schema({
+const userDataSchema = new mongoose.Schema({
     name: { type: String, required: true },
     location: {
         latitude: { type: Number, required: true },
@@ -18,4 +18,4 @@ const dataSchema = new mongoose.Schema({
     miscLossPercent: { type: Number, required: true }
 });
 
-module.exports = mongoose.model("Data", dataSchema);
+module.exports = mongoose.model("UserData", userDataSchema);
