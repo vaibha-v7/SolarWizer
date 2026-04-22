@@ -45,6 +45,44 @@ const createUserData = async (req, res) => {
 	}
 };
 
+const listUserData = async (req, res) => {
+	try {
+		const users = await UserData.find().sort({ createdAt: -1, _id: -1 });
+		return res.status(200).json({
+			message: "Users fetched successfully",
+			data: users
+		});
+	} catch (error) {
+		return res.status(500).json({
+			message: "Failed to fetch users",
+			error: error.message
+		});
+	}
+};
+
+const getUserDataById = async (req, res) => {
+	try {
+		const { userId } = req.params;
+		const user = await UserData.findById(userId);
+
+		if (!user) {
+			return res.status(404).json({
+				message: "User data not found"
+			});
+		}
+
+		return res.status(200).json({
+			message: "User fetched successfully",
+			data: user
+		});
+	} catch (error) {
+		return res.status(500).json({
+			message: "Failed to fetch user",
+			error: error.message
+		});
+	}
+};
+
 const generateSolarReportForUser = async (req, res) => {
 	try {
 		const { userId } = req.params;
@@ -110,5 +148,7 @@ const generateSolarReportForUser = async (req, res) => {
 
 module.exports = {
 	createUserData,
+	listUserData,
+	getUserDataById,
 	generateSolarReportForUser
 };

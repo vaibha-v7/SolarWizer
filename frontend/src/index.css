@@ -1,2 +1,54 @@
+@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Source+Sans+3:wght@400;500;600;700&display=swap");
 @import "tailwindcss";
+
+:root {
+	--font-body: "Source Sans 3", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+	--font-heading: "Plus Jakarta Sans", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+}
+
+html,
+body,
+#root {
+	min-height: 100%;
+}
+
+body {
+	font-family: var(--font-body);
+	color: #0f172a;
+	letter-spacing: 0.005em;
+	text-rendering: optimizeLegibility;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+button,
+th {
+	font-family: var(--font-heading);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+	letter-spacing: -0.01em;
+}
+
+th,
+td,
+strong,
+svg text {
+	font-variant-numeric: tabular-nums;
+}
+
+svg text {
+	font-family: var(--font-body);
+}
 
