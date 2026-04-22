@@ -245,7 +245,7 @@ const UsersDashboardPage = () => {
 								className="mt-5 rounded-xl border-2 border-emerald-400 px-4 py-3 text-sm font-bold text-emerald-700 transition hover:bg-emerald-100"
 								onClick={loadUsers}
 							>
-								Run Pipeline Now
+								Refresh Pipeline Now
 							</button>
 						</div>
 					</section>
