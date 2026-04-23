@@ -11,12 +11,15 @@
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.2.2",
+    "exceljs": "^4.4.0",
     "leaflet": "^1.9.4",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
     "react-router-dom": "^7.9.4",
-    "tailwindcss": "^4.2.2",
-    "xlsx": "^0.18.5"
+    "tailwindcss": "^4.2.2"
+  },
+  "overrides": {
+    "uuid": "^14.0.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",

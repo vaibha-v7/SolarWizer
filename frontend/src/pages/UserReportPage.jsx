@@ -59,7 +59,7 @@ const UserReportPage = () => {
 					{refreshing ? "Refreshing..." : "Refresh report"}
 				</button>
 				{!loading && !error && report && (
-					<button type="button" className="min-w-32 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:shadow-lg" onClick={() => exportReportToExcel(user, report)}>
+					<button type="button" className="min-w-32 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:shadow-lg" onClick={() => exportReportToExcel(user, report).catch(console.error)}>
 						Download Report
 					</button>
 				)}
