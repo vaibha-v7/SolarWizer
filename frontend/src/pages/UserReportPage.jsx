@@ -5,6 +5,7 @@ import MonthlyLineChart from "../components/MonthlyLineChart";
 import StatsStrip from "../components/StatsStrip";
 import UserProfileCard from "../components/UserProfileCard";
 import { fetchSolarReportByUserId, fetchUserById } from "../services/api";
+import { exportReportToExcel } from "../utils/exportToExcel";
 
 const UserReportPage = () => {
 	const { userId } = useParams();
@@ -57,6 +58,11 @@ const UserReportPage = () => {
 					<button type="button" className="min-w-32 rounded-xl bg-gradient-to-r from-emerald-600 to-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-70" onClick={() => loadPageData(true)} disabled={refreshing}>
 					{refreshing ? "Refreshing..." : "Refresh report"}
 				</button>
+				{!loading && !error && report && (
+					<button type="button" className="min-w-32 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:shadow-lg" onClick={() => exportReportToExcel(user, report)}>
+						Download Report
+					</button>
+				)}
 			</div>
 
 			{loading && <p className="px-1 py-3 text-sm font-semibold text-blue-700">Generating report from AIML...</p>}
