@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import UserListTable from "../components/UserListTable";
+import MapPicker from "../components/MapPicker";
+import RegionalMap from "../components/RegionalMap";
 import { createUser, fetchUsers } from "../services/api";
 
 const DEFAULT_FORM = {
@@ -221,16 +223,19 @@ const UsersDashboardPage = () => {
 					</section>
 
 					<section className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-						<div className="relative h-64 overflow-hidden rounded-2xl border border-slate-200/80 bg-[linear-gradient(120deg,#dbeafe_0%,#e2f5ee_48%,#f4f8ff_100%)] shadow-md lg:col-span-2">
-							<div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_30%,rgba(16,185,129,0.12),transparent_45%)]" />
-							<div className="relative p-6">
+						<div className="relative overflow-hidden rounded-2xl border border-slate-200/80 bg-[linear-gradient(120deg,#dbeafe_0%,#e2f5ee_48%,#f4f8ff_100%)] shadow-md lg:col-span-2">
+							<div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_30%,rgba(16,185,129,0.12),transparent_45%)] pointer-events-none" />
+							<div className="relative p-4 pb-2">
 								<p className="text-xs font-semibold uppercase tracking-wider text-slate-600">Regional Coverage</p>
-								<h4 className="mt-2 text-2xl font-bold text-slate-900">Installation Coordinate Map</h4>
-								<p className="mt-2 max-w-lg text-sm text-slate-600">Live view of registered installation coordinates and location clusters used by the reporting pipeline.</p>
-								<div className="mt-6 inline-flex items-center gap-2 rounded-full bg-white/90 px-3 py-1 text-xs font-semibold text-slate-700 shadow-sm">
+								<h4 className="mt-1 text-xl font-bold text-slate-900">Installation Coordinate Map</h4>
+								<p className="mt-1 text-xs text-slate-600">Live view of registered installation coordinates and location clusters used by the reporting pipeline.</p>
+								<div className="mt-2 inline-flex items-center gap-2 rounded-full bg-white/90 px-3 py-1 text-xs font-semibold text-slate-700 shadow-sm">
 									<span className="h-2 w-2 rounded-full bg-emerald-500" />
 									Live Monitor
 								</div>
+							</div>
+							<div className="h-72 w-full overflow-hidden rounded-b-2xl">
+								<RegionalMap users={users} />
 							</div>
 						</div>
 
@@ -276,6 +281,13 @@ const UsersDashboardPage = () => {
 							<input className="rounded-lg border border-slate-300 px-3 py-2 text-sm" name="systemCapacity" type="number" step="0.01" value={formData.systemCapacity} onChange={handleFormFieldChange} placeholder="System capacity (kW)" required />
 							<input className="rounded-lg border border-slate-300 px-3 py-2 text-sm" name="latitude" type="number" step="0.0001" value={formData.latitude} onChange={handleFormFieldChange} placeholder="Latitude" required />
 							<input className="rounded-lg border border-slate-300 px-3 py-2 text-sm" name="longitude" type="number" step="0.0001" value={formData.longitude} onChange={handleFormFieldChange} placeholder="Longitude" required />
+							<MapPicker
+								latitude={formData.latitude}
+								longitude={formData.longitude}
+								onLocationSelect={(lat, lng) =>
+									setFormData((prev) => ({ ...prev, latitude: String(lat), longitude: String(lng) }))
+								}
+							/>
 							<input className="rounded-lg border border-slate-300 px-3 py-2 text-sm" name="tiltDeg" type="number" step="0.1" value={formData.tiltDeg} onChange={handleFormFieldChange} placeholder="Tilt (deg)" required />
 							<input className="rounded-lg border border-slate-300 px-3 py-2 text-sm" name="azimuthDeg" type="number" step="0.1" value={formData.azimuthDeg} onChange={handleFormFieldChange} placeholder="Azimuth (deg)" required />
 							<input className="rounded-lg border border-slate-300 px-3 py-2 text-sm" name="shadingFactor" type="number" step="0.01" value={formData.shadingFactor} onChange={handleFormFieldChange} placeholder="Shading factor" required />
