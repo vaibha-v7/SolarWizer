@@ -9,7 +9,7 @@ const UserListTable = ({ users, onSelectUser }) => {
 
 	return (
 		<div className="overflow-x-auto">
-			<table className="min-w-[900px] w-full border-collapse text-left text-sm text-slate-700">
+			<table className="min-w-[780px] w-full border-collapse text-left text-sm text-slate-700">
 				<thead>
 					<tr className="bg-slate-50/60">
 						<th className="border-b border-slate-200 px-5 py-3 text-xs font-bold uppercase tracking-wide text-slate-600">Name</th>

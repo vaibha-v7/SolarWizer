@@ -157,9 +157,12 @@ const UsersDashboardPage = () => {
 				</div>
 			</aside>
 
-			<header className="sticky top-0 z-30 border-b border-slate-200/70 bg-white/80 px-4 py-3 backdrop-blur-xl lg:pl-[17.5rem] lg:pr-8">
+			<header className="sticky top-0 z-30 border-b border-slate-200/70 bg-white/80 px-3 py-3 backdrop-blur-xl sm:px-4 lg:pl-[17.5rem] lg:pr-8">
 				<div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
-					<div className="hidden text-xs font-semibold uppercase tracking-[0.2em] text-slate-500 sm:block">Dashboard Console</div>
+					<div>
+						<div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500 sm:text-xs">Dashboard Console</div>
+						<p className="text-sm font-bold text-slate-800 lg:hidden">SolarWizer Users</p>
+					</div>
 					<div className="flex w-full items-center justify-end gap-3 sm:w-auto">
 						<div className="w-full rounded-full border-2 border-emerald-300/90 bg-white shadow-[0_0_0_4px_rgba(16,185,129,0.12)] transition focus-within:border-emerald-500 focus-within:shadow-[0_0_0_5px_rgba(16,185,129,0.2)] sm:w-80">
 							<input
@@ -175,15 +178,40 @@ const UsersDashboardPage = () => {
 				</div>
 			</header>
 
-			<main className="px-4 py-6 lg:pl-[17.5rem] lg:pr-8">
+			<div className="px-3 pt-3 sm:px-4 lg:hidden">
+				<div className="mx-auto grid max-w-7xl grid-cols-1 gap-2 sm:grid-cols-2">
+					<button
+						type="button"
+						className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+						onClick={() => {
+							setSubmitError("");
+							setIsFormOpen(true);
+						}}
+					>
+						Add New User
+					</button>
+					<button
+						type="button"
+						className="rounded-xl bg-gradient-to-r from-emerald-600 to-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow transition hover:-translate-y-0.5 hover:shadow-lg"
+						onClick={() => {
+							setSubmitError("");
+							setIsFormOpen(true);
+						}}
+					>
+						New Installation
+					</button>
+				</div>
+			</div>
+
+			<main className="px-3 py-5 sm:px-4 sm:py-6 lg:pl-[17.5rem] lg:pr-8">
 				<div className="mx-auto max-w-7xl space-y-5">
 					<section className="space-y-2">
 						<p className="inline-block rounded-full bg-blue-100 px-3 py-1 text-xs font-bold uppercase tracking-wide text-blue-800">SolarWizer Dashboard</p>
-						<h1 className="text-3xl font-bold tracking-tight text-slate-900 md:text-4xl">User Data Overview</h1>
-						<p className="max-w-3xl text-sm text-slate-600 md:text-base">Choose any user to generate and view their monthly solar report from the AIML pipeline. Monitor pipeline health and user installation trends.</p>
+						<h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl md:text-4xl">User Data Overview</h1>
+						<p className="max-w-3xl text-sm text-slate-600 sm:text-base">Choose any user to generate and view their monthly solar report from the AIML pipeline. Monitor pipeline health and user installation trends.</p>
 					</section>
 
-					<section className="grid grid-cols-1 gap-4 md:grid-cols-4">
+					<section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
 						<div className="rounded-2xl border border-slate-200/80 bg-white/88 p-4 shadow-sm">
 							<p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Total Capacity</p>
 							<p className="mt-2 text-2xl font-bold text-slate-900">{totalCapacity.toFixed(1)} kW</p>
@@ -194,11 +222,11 @@ const UsersDashboardPage = () => {
 							<p className="mt-2 text-2xl font-bold text-slate-900">{users.length}</p>
 							<p className="mt-1 text-xs text-slate-500">Registered profiles</p>
 						</div>
-						<div className="rounded-2xl border border-slate-200/80 bg-white/88 p-4 shadow-sm md:col-span-2">
+						<div className="rounded-2xl border border-slate-200/80 bg-white/88 p-4 shadow-sm md:col-span-2 xl:col-span-2">
 							<p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Pipeline Status</p>
-							<div className="mt-2 flex items-center justify-between gap-4">
+							<div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
 								<div>
-									<p className="text-2xl font-bold text-slate-900">System Optimal</p>
+									<p className="text-xl font-bold text-slate-900 sm:text-2xl">System Optimal</p>
 									<p className="mt-1 text-xs text-slate-500">{regionCount} active coordinate regions monitored</p>
 								</div>
 								<div className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800">Live</div>
@@ -207,7 +235,7 @@ const UsersDashboardPage = () => {
 					</section>
 
 					<section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white/90 shadow-lg">
-						<div className="flex items-center justify-between border-b border-slate-200/70 bg-slate-50/70 px-5 py-3">
+						<div className="flex flex-col gap-1 border-b border-slate-200/70 bg-slate-50/70 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
 							<h3 className="text-xs font-bold uppercase tracking-[0.14em] text-slate-700">User Repositories</h3>
 							<p className="text-xs text-slate-500">Showing {filteredUsers.length} of {users.length} users</p>
 						</div>
@@ -234,7 +262,7 @@ const UsersDashboardPage = () => {
 									Live Monitor
 								</div>
 							</div>
-							<div className="h-72 w-full overflow-hidden rounded-b-2xl">
+							<div className="h-56 w-full overflow-hidden rounded-b-2xl sm:h-72">
 								<RegionalMap users={users} />
 							</div>
 						</div>
@@ -258,11 +286,11 @@ const UsersDashboardPage = () => {
 			</main>
 
 			{isFormOpen && (
-				<div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4" role="dialog" aria-modal="true">
-					<div className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-slate-300/60 bg-white p-5 shadow-2xl">
+				<div className="fixed inset-0 z-50 flex items-start justify-center bg-slate-950/45 p-3 pt-6 sm:items-center sm:p-4" role="dialog" aria-modal="true">
+					<div className="max-h-[94vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-slate-300/60 bg-white p-4 shadow-2xl sm:p-5">
 						<div className="mb-4 flex items-center justify-between gap-3">
 							<div>
-								<h3 className="text-2xl font-bold tracking-tight text-slate-900">Add New User</h3>
+								<h3 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">Add New User</h3>
 								<p className="mt-1 text-sm text-slate-600">Fill in all required fields to create a user profile.</p>
 							</div>
 							<button
@@ -274,7 +302,7 @@ const UsersDashboardPage = () => {
 							</button>
 						</div>
 
-						<form className="grid gap-3 md:grid-cols-2" onSubmit={handleCreateUser}>
+						<form className="grid gap-2.5 md:grid-cols-2 md:gap-3" onSubmit={handleCreateUser}>
 							<input className="rounded-lg border border-slate-300 px-3 py-2 text-sm" name="name" value={formData.name} onChange={handleFormFieldChange} placeholder="Full name" required />
 							<input className="rounded-lg border border-slate-300 px-3 py-2 text-sm" name="email" type="email" value={formData.email} onChange={handleFormFieldChange} placeholder="Email" required />
 							<input className="rounded-lg border border-slate-300 px-3 py-2 text-sm" name="phoneNumber" value={formData.phoneNumber} onChange={handleFormFieldChange} placeholder="Phone number" required />
@@ -298,7 +326,7 @@ const UsersDashboardPage = () => {
 
 							{submitError && <p className="md:col-span-2 text-sm font-semibold text-rose-700">{submitError}</p>}
 
-							<div className="md:col-span-2 mt-1 flex flex-wrap justify-end gap-2">
+							<div className="mt-1 flex flex-wrap justify-end gap-2 md:col-span-2">
 								<button
 									type="button"
 									className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
