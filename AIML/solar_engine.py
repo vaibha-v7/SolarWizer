@@ -79,7 +79,6 @@ def run_simulation(
     losses=[2, 3, 2, 1],
     shading_factor=0.95
 ):
-    # Define FIRST
     location = Location(lat, lon, tz='Asia/Kolkata')
 
     times = pd.date_range(
@@ -89,19 +88,34 @@ def run_simulation(
         tz='Asia/Kolkata'
     )
 
-    # Try NASA
+    # 🌞 Fetch NASA monthly data
     try:
         monthly_irr, monthly_temp = fetch_nasa_data(lat, lon)
 
         weather = pd.DataFrame(index=times)
 
+        # 🌞 Get clear-sky pattern (this is the key fix)
+        clearsky = location.get_clearsky(times)
+
         for month in range(1, 13):
             mask = weather.index.month == month
-            weather.loc[mask, 'ghi'] = monthly_irr[month] * 1000 / 24
-            weather.loc[mask, 'temp_air'] = monthly_temp[month]
-            weather.loc[mask, 'wind_speed'] = 1
 
-        weather = weather.ffill().bfill()
+            # NASA monthly avg (kWh/m²/day → Wh/m²/day)
+            daily_irr_wh = monthly_irr[month] * 1000
+
+            # Clear-sky daily total (Wh/m²/day)
+            clearsky_daily = clearsky.loc[mask]['ghi'].resample('D').sum().mean()
+
+            # Scaling factor
+            scale = daily_irr_wh / clearsky_daily if clearsky_daily > 0 else 1
+
+            # Apply realistic shape
+            weather.loc[mask, 'ghi'] = clearsky.loc[mask]['ghi'] * scale
+
+            weather.loc[mask, 'temp_air'] = monthly_temp[month]
+            weather.loc[mask, 'wind_speed'] = 1  # Default wind speed
+
+            weather = weather.ffill().bfill()
 
     except Exception as e:
         print("⚠️ NASA failed, fallback to clear-sky:", e)
@@ -110,10 +124,10 @@ def run_simulation(
         weather['temp_air'] = 25
         weather['wind_speed'] = 1
 
-    # Solar position
+    # 🌞 Solar position
     solar_position = location.get_solarposition(times)
 
-    # DNI / DHI
+    # 🌞 DNI/DHI calculation
     dni = pvlib.irradiance.disc(
         weather['ghi'],
         solar_position['zenith'],
@@ -125,7 +139,7 @@ def run_simulation(
     weather['dni'] = dni.clip(lower=0)
     weather['dhi'] = dhi.clip(lower=0)
 
-    # PV system
+    # ⚡ PV SYSTEM
     system = PVSystem(
         surface_tilt=tilt,
         surface_azimuth=azimuth,
@@ -134,16 +148,18 @@ def run_simulation(
             'gamma_pdc': -0.004
         },
         inverter_parameters={
-            'pdc0': (system_size_kw * 1000) / 1.2
+            # 🔥 FIX 2: remove undersizing loss
+            'pdc0': system_size_kw * 1000
         },
         racking_model='open_rack',
         module_type='glass_polymer'
     )
 
+    # 🔥 FIX 3: better temperature model
     mc = ModelChain(
         system,
         location,
-        aoi_model="no_loss",
+        aoi_model="physical",
         spectral_model="no_loss",
         temperature_model="sapm"
     )
@@ -152,22 +168,16 @@ def run_simulation(
 
     df = mc.results.ac.to_frame(name="ac_power")
 
-    # Soiling
-    soiling_loss = {
-        1: 2, 2: 3, 3: 5, 4: 6,
-        5: 7, 6: 6, 7: 3, 8: 2,
-        9: 3, 10: 4, 11: 3, 12: 2
-    }
+    # 🔥 FIX 4: Remove double loss stacking
+    # Only apply ONE combined loss factor
 
-    for month, loss in soiling_loss.items():
-        df.loc[df.index.month == month, "ac_power"] *= (1 - loss / 100)
-
-    # Shading + PR
-    df["ac_power"] *= shading_factor
-    PR = calculate_pr(losses)
+    PR = calculate_pr(losses)  # ~0.9 typical
     df["ac_power"] *= PR
 
-    # Results
+    # Optional shading (keep if needed)
+    df["ac_power"] *= shading_factor
+
+    # 📊 Results
     annual_energy = df["ac_power"].sum() / 1000
     monthly_energy = df["ac_power"].resample('ME').sum() / 1000
 
