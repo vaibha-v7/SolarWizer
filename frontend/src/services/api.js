@@ -42,3 +42,26 @@ export const createUser = async (payload) => {
 
 	return parseResponse(response, "Failed to create user");
 };
+
+export const deleteUser = async (userId) => {
+	const response = await fetch(`${API_BASE_URL}/users/${userId}`, {
+		method: "DELETE",
+		headers: {
+			"Content-Type": "application/json"
+		}
+	});
+
+	return parseResponse(response, "Failed to delete user");
+};
+
+export const updateUser = async (userId, payload) => {
+	const response = await fetch(`${API_BASE_URL}/users/${userId}`, {
+		method: "PUT",
+		headers: {
+			"Content-Type": "application/json"
+		},
+		body: JSON.stringify(payload)
+	});
+
+	return parseResponse(response, "Failed to update user");
+};

@@ -146,9 +146,66 @@ const generateSolarReportForUser = async (req, res) => {
 	}
 };
 
+const deleteUserData = async (req, res) => {
+	try {
+		const { userId } = req.params;
+
+		const user = await UserData.findByIdAndDelete(userId);
+
+		if (!user) {
+			return res.status(404).json({
+				message: "User data not found"
+			});
+		}
+
+		// Also delete associated monthly data
+		await MonthlyData.deleteOne({ userDataId: userId });
+
+		return res.status(200).json({
+			message: "User data deleted successfully",
+			data: user
+		});
+	} catch (error) {
+		return res.status(500).json({
+			message: "Failed to delete user data",
+			error: error.message
+		});
+	}
+};
+
+const updateUserData = async (req, res) => {
+	try {
+		const { userId } = req.params;
+		const updatedData = req.body;
+
+		const user = await UserData.findByIdAndUpdate(userId, updatedData, {
+			new: true,
+			runValidators: true
+		});
+
+		if (!user) {
+			return res.status(404).json({
+				message: "User data not found"
+			});
+		}
+
+		return res.status(200).json({
+			message: "User data updated successfully",
+			data: user
+		});
+	} catch (error) {
+		return res.status(400).json({
+			message: "Failed to update user data",
+			error: error.message
+		});
+	}
+};
+
 module.exports = {
 	createUserData,
 	listUserData,
 	getUserDataById,
-	generateSolarReportForUser
+	generateSolarReportForUser,
+	deleteUserData,
+	updateUserData
 };

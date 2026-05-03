@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import UserListTable from "../components/UserListTable";
 import MapPicker from "../components/MapPicker";
 import RegionalMap from "../components/RegionalMap";
-import { createUser, fetchUsers } from "../services/api";
+import { createUser, fetchUsers, deleteUser, updateUser } from "../services/api";
 
 const DEFAULT_FORM = {
 	name: "",
@@ -31,6 +31,9 @@ const UsersDashboardPage = () => {
 	const [submitError, setSubmitError] = useState("");
 	const [formData, setFormData] = useState(DEFAULT_FORM);
 	const [searchText, setSearchText] = useState("");
+	const [deleteConfirm, setDeleteConfirm] = useState({ isOpen: false, userId: null, userName: "" });
+	const [isDeleting, setIsDeleting] = useState(false);
+	const [editingUserId, setEditingUserId] = useState(null);
 
 	const loadUsers = useCallback(async () => {
 		setLoading(true);
@@ -55,7 +58,55 @@ const UsersDashboardPage = () => {
 		setFormData((prev) => ({ ...prev, [name]: value }));
 	};
 
-	const handleCreateUser = async (event) => {
+	const handleDeleteClick = (userId, userName) => {
+		setDeleteConfirm({
+			isOpen: true,
+			userId: userId,
+			userName: userName
+		});
+	};
+
+	const handleConfirmDelete = async () => {
+		setIsDeleting(true);
+
+		try {
+			await deleteUser(deleteConfirm.userId);
+			setDeleteConfirm({ isOpen: false, userId: null, userName: "" });
+			await loadUsers();
+		} catch (err) {
+			console.error("Failed to delete user:", err);
+			setDeleteConfirm({ isOpen: false, userId: null, userName: "" });
+		} finally {
+			setIsDeleting(false);
+		}
+	};
+
+	const handleCancelDelete = () => {
+		setDeleteConfirm({ isOpen: false, userId: null, userName: "" });
+	};
+
+	const handleEditUser = (user) => {
+		setEditingUserId(user._id);
+		setFormData({
+			name: user.name,
+			email: user.email,
+			phoneNumber: user.phoneNumber,
+			latitude: String(user.location?.latitude ?? ""),
+			longitude: String(user.location?.longitude ?? ""),
+			systemCapacity: String(user.systemCapacity),
+			tiltDeg: String(user.tiltDeg),
+			azimuthDeg: String(user.azimuthDeg),
+			shadingFactor: String(user.shadingFactor),
+			soilingLossPercent: String(user.soilingLossPercent),
+			inverterLossPercent: String(user.inverterLossPercent),
+			wiringLossPercent: String(user.wiringLossPercent),
+			miscLossPercent: String(user.miscLossPercent)
+		});
+		setIsFormOpen(true);
+		setSubmitError("");
+	};
+
+	const handleSubmitForm = async (event) => {
 		event.preventDefault();
 		setSubmitError("");
 		setIsSubmitting(true);
@@ -79,15 +130,28 @@ const UsersDashboardPage = () => {
 				miscLossPercent: Number(formData.miscLossPercent)
 			};
 
-			await createUser(payload);
+			if (editingUserId) {
+				await updateUser(editingUserId, payload);
+			} else {
+				await createUser(payload);
+			}
+
 			setIsFormOpen(false);
+			setEditingUserId(null);
 			setFormData(DEFAULT_FORM);
 			await loadUsers();
 		} catch (err) {
-			setSubmitError(err.message || "Could not create user");
+			setSubmitError(err.message || (editingUserId ? "Could not update user" : "Could not create user"));
 		} finally {
 			setIsSubmitting(false);
 		}
+	};
+
+	const handleCloseForm = () => {
+		setIsFormOpen(false);
+		setEditingUserId(null);
+		setFormData(DEFAULT_FORM);
+		setSubmitError("");
 	};
 
 	const filteredUsers = useMemo(() => {
@@ -245,7 +309,10 @@ const UsersDashboardPage = () => {
 						{!loading && !error && (
 							<UserListTable
 								users={filteredUsers}
-								onSelectUser={(userId) => navigate(`/users/${userId}/report`)}
+								onSelectUser={(userId) => navigate(`/users/${userId}/report`)}									onEditUser={handleEditUser}								onDeleteUser={(userId) => {
+									const user = users.find(u => u._id === userId);
+									handleDeleteClick(userId, user?.name || "User");
+								}}
 							/>
 						)}
 					</section>
@@ -290,19 +357,23 @@ const UsersDashboardPage = () => {
 					<div className="max-h-[94vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-slate-300/60 bg-white p-4 shadow-2xl sm:p-5">
 						<div className="mb-4 flex items-center justify-between gap-3">
 							<div>
-								<h3 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">Add New User</h3>
-								<p className="mt-1 text-sm text-slate-600">Fill in all required fields to create a user profile.</p>
+								<h3 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
+									{editingUserId ? "Edit User" : "Add New User"}
+								</h3>
+								<p className="mt-1 text-sm text-slate-600">
+									{editingUserId ? "Update user information and settings." : "Fill in all required fields to create a user profile."}
+								</p>
 							</div>
 							<button
 								type="button"
 								className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-								onClick={() => setIsFormOpen(false)}
+								onClick={handleCloseForm}
 							>
 								Close
 							</button>
 						</div>
 
-						<form className="grid gap-2.5 md:grid-cols-2 md:gap-3" onSubmit={handleCreateUser}>
+						<form className="grid gap-2.5 md:grid-cols-2 md:gap-3" onSubmit={handleSubmitForm}>
 							<input className="rounded-lg border border-slate-300 px-3 py-2 text-sm" name="name" value={formData.name} onChange={handleFormFieldChange} placeholder="Full name" required />
 							<input className="rounded-lg border border-slate-300 px-3 py-2 text-sm" name="email" type="email" value={formData.email} onChange={handleFormFieldChange} placeholder="Email" required />
 							<input className="rounded-lg border border-slate-300 px-3 py-2 text-sm" name="phoneNumber" value={formData.phoneNumber} onChange={handleFormFieldChange} placeholder="Phone number" required />
@@ -330,7 +401,7 @@ const UsersDashboardPage = () => {
 								<button
 									type="button"
 									className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-									onClick={() => setIsFormOpen(false)}
+									onClick={handleCloseForm}
 								>
 									Cancel
 								</button>
@@ -339,10 +410,42 @@ const UsersDashboardPage = () => {
 									className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
 									disabled={isSubmitting}
 								>
-									{isSubmitting ? "Saving..." : "Create User"}
+										{isSubmitting ? "Saving..." : editingUserId ? "Update User" : "Create User"}
 								</button>
 							</div>
 						</form>
+					</div>
+				</div>
+			)}
+
+			{deleteConfirm.isOpen && (
+				<div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-3" role="dialog" aria-modal="true">
+					<div className="w-full max-w-sm rounded-2xl border border-slate-300/60 bg-white p-6 shadow-2xl">
+						<div className="mb-4">
+							<h3 className="text-xl font-bold tracking-tight text-slate-900">Delete User</h3>
+							<p className="mt-2 text-sm text-slate-600">
+								Are you sure you want to delete <span className="font-semibold text-slate-900">{deleteConfirm.userName}</span>? This action cannot be undone and will remove all associated data.
+							</p>
+						</div>
+
+						<div className="flex flex-wrap justify-end gap-2">
+							<button
+								type="button"
+								className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+								onClick={handleCancelDelete}
+								disabled={isDeleting}
+							>
+								Cancel
+							</button>
+							<button
+								type="button"
+								className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+								onClick={handleConfirmDelete}
+								disabled={isDeleting}
+							>
+								{isDeleting ? "Deleting..." : "Delete User"}
+							</button>
+						</div>
 					</div>
 				</div>
 			)}
