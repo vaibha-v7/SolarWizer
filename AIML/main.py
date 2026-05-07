@@ -40,19 +40,36 @@ class SolarInput(BaseModel):
         default=[2, 3, 2, 1],
         description="List of loss percentages"
     )
+    dc_ac_ratio: float = Field(
+        default=1.2,
+        ge=0.8,
+        le=2.0
+    )
+
+    inv_efficiency: float = Field(
+        default=98.0,
+        ge=98.0,
+        le=99.9
+    )
+
+    bifaciality: float = Field(
+        default=0.0,
+        ge=0.0,
+        le=1.0
+    )
 
 
 def call_pvgis(data: SolarInput):
     url = "https://re.jrc.ec.europa.eu/api/v5_2/PVcalc"
 
-    # 🔥 Increase realistic losses
+    # realistic losses
     total_losses = max(sum(data.losses), 15)
 
     params = {
         "lat": data.lat,
         "lon": data.lon,
         "peakpower": data.system_size_kw,
-        "loss": total_losses,   # 🔥 key change
+        "loss": total_losses,
         "angle": data.tilt,
         "aspect": data.azimuth - 180,
         "outputformat": "json"
@@ -61,20 +78,41 @@ def call_pvgis(data: SolarInput):
     response = requests.get(url, params=params)
     result = response.json()
 
+    annual_energy = result["outputs"]["totals"]["fixed"]["E_y"]
+    monthly_energy = result["outputs"]["monthly"]["fixed"]
+
+    # 🔥 APPLY EXTRA FACTORS MANUALLY
+
+    # inverter efficiency correction
+    annual_energy *= (data.inv_efficiency / 100)
+
+    # bifacial gain approximation
+    annual_energy *= (1 + (data.bifaciality * 0.10))
+
+    monthly_energy = [
+    m * (data.inv_efficiency / 100) *
+    (1 + (data.bifaciality * 0.10))
+    for m in monthly_energy
+    ]
+
     return {
         "source": "PVGIS",
         "mode": "realistic",
-        "annual_energy_kwh": result["outputs"]["totals"]["fixed"]["E_y"],
-        "monthly_energy_kwh": result["outputs"]["monthly"]["fixed"]
-    }
 
+        "dc_ac_ratio": data.dc_ac_ratio,
+        "inv_efficiency": data.inv_efficiency,
+        "bifaciality": data.bifaciality,
+
+        "annual_energy_kwh": annual_energy,
+        "monthly_energy_kwh": monthly_energy
+    }
 
 
 
 def call_pvwatts(data: SolarInput):
     url = "https://developer.nrel.gov/api/pvwatts/v8.json"
 
-    # 🔥 Use realistic default if user gives low loss
+    # realistic losses
     total_losses = max(sum(data.losses), 15)
 
     params = {
@@ -85,23 +123,46 @@ def call_pvwatts(data: SolarInput):
         "tilt": data.tilt,
         "azimuth": data.azimuth,
 
-        # 🔥 CALIBRATION PARAMETERS
+        # calibration
         "losses": total_losses,
-        "array_type": 0,      # rooftop (realistic)
-        "module_type": 0,     # standard module
-        "dc_ac_ratio": 1.1    # slightly conservative
+        "array_type": 0,
+        "module_type": 0,
+
+        # 🔥 NEW
+        "dc_ac_ratio": data.dc_ac_ratio,
+        "inv_eff": data.inv_efficiency
     }
 
     response = requests.get(url, params=params)
     result = response.json()
 
+    annual_energy = result["outputs"]["ac_annual"]
+    monthly_energy = result["outputs"]["ac_monthly"]
+
+    # inverter efficiency correction
+    annual_energy *= (data.inv_efficiency / 100)
+
+    # bifacial gain correction
+    annual_energy *= (1 + (data.bifaciality * 0.10))
+
+    # 🔥 ADD THIS HERE
+    monthly_energy = [
+        m * (data.inv_efficiency / 100) *
+        (1 + (data.bifaciality * 0.10))
+        for m in monthly_energy
+    ]
+
     return {
         "source": "PVWatts",
         "mode": "realistic",
-        "annual_energy_kwh": result["outputs"]["ac_annual"],
-        "monthly_energy_kwh": result["outputs"]["ac_monthly"]
-    }
 
+        "dc_ac_ratio": data.dc_ac_ratio,
+        "inv_efficiency": data.inv_efficiency,
+        "bifaciality": data.bifaciality,
+
+        "annual_energy_kwh": annual_energy,
+        "monthly_energy_kwh": monthly_energy
+    }
 
 class SavingsInput(BaseModel):
     connected_load_kw: float   # sanctioned load (max installable)
