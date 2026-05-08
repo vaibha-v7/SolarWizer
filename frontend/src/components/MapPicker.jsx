@@ -52,7 +52,6 @@ const MapPicker = ({ latitude, longitude, onLocationSelect }) => {
 			mapRef.current = null;
 			markerRef.current = null;
 		};
-	// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, []);
 
 	// Keep marker in sync with lat/lon fields
