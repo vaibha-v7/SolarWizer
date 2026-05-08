@@ -22,6 +22,9 @@ const mapUserToAimlPayload = (user) => ({
 	tilt: user.tiltDeg,
 	azimuth: user.azimuthDeg,
 	shading_factor: user.shadingFactor,
+	dc_ac_ratio: user.dc_ac_ratio ?? 1.2,
+	inv_efficiency: user.inv_efficiency ?? 98,
+	bifaciality: user.bifaciality ?? 0,
 	losses: [
 		user.soilingLossPercent,
 		user.inverterLossPercent,
@@ -95,32 +98,45 @@ const generateSolarReportForUser = async (req, res) => {
 		}
 
 		const aimlPayload = mapUserToAimlPayload(user);
-		const aimlResponse = await fetch(`${AIML_API_URL}/predict`, {
-			method: "POST",
-			headers: {
-				"Content-Type": "application/json"
-			},
-			body: JSON.stringify(aimlPayload)
-		});
+		// Call both pvgis (/predict1) and pvwatts (/predict2)
+		let pvgisPrediction = null;
+		let pvwattsPrediction = null;
 
-		if (!aimlResponse.ok) {
-			const errorText = await aimlResponse.text();
-			return res.status(502).json({
-				message: "AIML service request failed",
-				error: errorText
+		try {
+			const resp1 = await fetch(`${AIML_API_URL}/predict1`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify(aimlPayload)
 			});
+
+			if (resp1.ok) pvgisPrediction = await resp1.json();
+		} catch (e) {
+			// continue
 		}
 
-		const prediction = await aimlResponse.json();
+		try {
+			const resp2 = await fetch(`${AIML_API_URL}/predict2`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify(aimlPayload)
+			});
+
+			if (resp2.ok) pvwattsPrediction = await resp2.json();
+		} catch (e) {
+			// continue
+		}
+
+		// Prefer pvgis for the main report values; fall back to pvwatts when missing
+		const primary = pvgisPrediction || pvwattsPrediction || {};
 
 		const reportPayload = {
 			userDataId: user._id,
-			annual_energy_kwh: Number(prediction.annual_energy_kwh ?? 0),
-			monthly_energy_kwh: normalizeMonthlyEnergy(prediction.monthly_energy_kwh),
-			performance_ratio: Number(prediction.performance_ratio ?? 0),
-			forecast_7_days: Array.isArray(prediction.forecast_7_days)
-				? prediction.forecast_7_days
-				: []
+			annual_energy_kwh: Number(primary.annual_energy_kwh ?? 0),
+			monthly_energy_kwh: normalizeMonthlyEnergy(primary.monthly_energy_kwh),
+			performance_ratio: Number(primary.performance_ratio ?? 0),
+			forecast_7_days: Array.isArray(primary.forecast_7_days) ? primary.forecast_7_days : [],
+			pvgis: pvgisPrediction ?? {},
+			pvwatts: pvwattsPrediction ?? {}
 		};
 
 		const monthlyReport = await MonthlyData.findOneAndUpdate(

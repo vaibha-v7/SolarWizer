@@ -11,11 +11,14 @@ const userDataSchema = new mongoose.Schema({
     systemCapacity: { type: Number, required: true },
     tiltDeg: { type: Number, required: true },
     azimuthDeg: { type: Number, required: true },
-    shadingFactor: { type: Number, required: true },
+    shadingFactor: { type: Number, default: 0.95 },
     soilingLossPercent: { type: Number, required: true },
     inverterLossPercent: { type: Number, required: true },
     wiringLossPercent: { type: Number, required: true },
-    miscLossPercent: { type: Number, required: true }
+    miscLossPercent: { type: Number, required: true },
+    dc_ac_ratio: { type: Number, default: 1.2 },
+    inv_efficiency: { type: Number, default: 98 },
+    bifaciality: { type: Number, default: 0 }
 });
 
 module.exports = mongoose.model("UserData", userDataSchema);
