@@ -15,6 +15,8 @@ load_dotenv()
 
 PVWATTS_API_KEY = os.getenv("PVWATTS_API_KEY")
 
+MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
 app = FastAPI()
 
 # Add CORS middleware for frontend-backend communication
@@ -60,6 +62,45 @@ class SolarInput(BaseModel):
     )
 
 
+def _extract_numeric_value(value, default=0.0):
+    if isinstance(value, (int, float)):
+        return float(value)
+
+    if isinstance(value, dict):
+        for key in ("E_m", "E_y", "value", "energy", "kwh", "ac_monthly", "month_energy"):
+            if key in value:
+                return _extract_numeric_value(value[key], default)
+
+        if len(value) == 1:
+            return _extract_numeric_value(next(iter(value.values())), default)
+
+    return float(default)
+
+
+def _normalize_monthly_energy(monthly_energy):
+    normalized = {month: 0.0 for month in MONTHS}
+
+    if isinstance(monthly_energy, dict):
+        for month in MONTHS:
+            value = monthly_energy.get(month)
+            if value is None:
+                value = monthly_energy.get(month.lower())
+            normalized[month] = _extract_numeric_value(value, 0.0)
+        return normalized
+
+    if isinstance(monthly_energy, list):
+        for index, month in enumerate(MONTHS):
+            if index < len(monthly_energy):
+                normalized[month] = _extract_numeric_value(monthly_energy[index], 0.0)
+        return normalized
+
+    if monthly_energy is not None:
+        scalar_value = _extract_numeric_value(monthly_energy, 0.0)
+        return {month: scalar_value for month in MONTHS}
+
+    return normalized
+
+
 def call_pvgis(data: SolarInput):
     url = "https://re.jrc.ec.europa.eu/api/v5_2/PVcalc"
 
@@ -90,11 +131,11 @@ def call_pvgis(data: SolarInput):
     # bifacial gain approximation
     annual_energy *= (1 + (data.bifaciality * 0.10))
 
-    monthly_energy = [
-    m * (data.inv_efficiency / 100) *
-    (1 + (data.bifaciality * 0.10))
-    for m in monthly_energy
-    ]
+    monthly_energy = _normalize_monthly_energy(monthly_energy)
+    monthly_energy = {
+        month: value * (data.inv_efficiency / 100) * (1 + (data.bifaciality * 0.10))
+        for month, value in monthly_energy.items()
+    }
 
     return {
         "source": "PVGIS",
@@ -134,11 +175,19 @@ def call_pvwatts(data: SolarInput):
         "inv_eff": data.inv_efficiency
     }
 
-    response = requests.get(url, params=params)
-    result = response.json()
+    try:
+        response = requests.get(url, params=params, timeout=30)
+        response.raise_for_status()
+        result = response.json()
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"PVWatts request failed: {exc}")
 
-    annual_energy = result["outputs"]["ac_annual"]
-    monthly_energy = result["outputs"]["ac_monthly"]
+    if isinstance(result, dict) and result.get("errors"):
+        raise HTTPException(status_code=502, detail=f"PVWatts error: {result.get('errors')}")
+
+    outputs = result.get("outputs", {}) if isinstance(result, dict) else {}
+    annual_energy = _extract_numeric_value(outputs.get("ac_annual"), 0.0)
+    monthly_energy = outputs.get("ac_monthly", [])
 
     # inverter efficiency correction
     annual_energy *= (data.inv_efficiency / 100)
@@ -146,12 +195,11 @@ def call_pvwatts(data: SolarInput):
     # bifacial gain correction
     annual_energy *= (1 + (data.bifaciality * 0.10))
 
-    # 🔥 ADD THIS HERE
-    monthly_energy = [
-        m * (data.inv_efficiency / 100) *
-        (1 + (data.bifaciality * 0.10))
-        for m in monthly_energy
-    ]
+    monthly_energy = _normalize_monthly_energy(monthly_energy)
+    monthly_energy = {
+        month: value * (data.inv_efficiency / 100) * (1 + (data.bifaciality * 0.10))
+        for month, value in monthly_energy.items()
+    }
 
     return {
         "source": "PVWatts",

@@ -12,6 +12,7 @@ const UserReportPage = () => {
 	const navigate = useNavigate();
 	const [user, setUser] = useState(null);
 	const [report, setReport] = useState(null);
+	const [reportSource, setReportSource] = useState("pvgis");
 	const [loading, setLoading] = useState(true);
 	const [refreshing, setRefreshing] = useState(false);
 	const [error, setError] = useState("");
@@ -77,9 +78,33 @@ const UserReportPage = () => {
 				<div className="grid items-start gap-4 lg:grid-cols-[320px_minmax(0,1fr)] xl:grid-cols-[340px_minmax(0,1fr)]">
 					<UserProfileCard user={user} />
 					<div className="space-y-4">
-						<StatsStrip report={report} />
-						<MonthlyLineChart monthlyData={report?.monthly_energy_kwh} />
-						<Forecast7DayTable forecast={report?.forecast_7_days} />
+						{/* Tabs to switch between PVGIS and PVWATTS results saved in DB */}
+						<div className="flex items-center gap-2">
+							<button
+								className={`rounded-md px-3 py-1 text-sm font-semibold ${reportSource === "pvgis" ? "bg-emerald-600 text-white" : "bg-white border"}`}
+								onClick={() => setReportSource("pvgis")}
+							>
+								PVGIS
+							</button>
+							<button
+								className={`rounded-md px-3 py-1 text-sm font-semibold ${reportSource === "pvwatts" ? "bg-emerald-600 text-white" : "bg-white border"}`}
+								onClick={() => setReportSource("pvwatts")}
+							>
+								PVWATTS
+							</button>
+						</div>
+
+						{/* Choose data from report.pvgis or report.pvwatts; fall back to top-level report */}
+						{(() => {
+							const sourceData = report?.[reportSource] ?? report ?? null;
+							return (
+								<>
+									<StatsStrip report={sourceData} />
+									<MonthlyLineChart monthlyData={sourceData?.monthly_energy_kwh} />
+									<Forecast7DayTable forecast={sourceData?.forecast_7_days} />
+								</>
+							);
+						})()}
 					</div>
 				</div>
 			)}

@@ -37,6 +37,9 @@ const monthlyDataSchema = new mongoose.Schema({
 		required: true,
 		default: []
 	}
+    ,
+    pvgis: { type: mongoose.Schema.Types.Mixed, default: {} },
+    pvwatts: { type: mongoose.Schema.Types.Mixed, default: {} }
 });
 
 module.exports = mongoose.model("MonthlyData", monthlyDataSchema);
