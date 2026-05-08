@@ -52,7 +52,17 @@ const UsersDashboardPage = () => {
 	}, []);
 
 	useEffect(() => {
-		loadUsers();
+		let isActive = true;
+
+		Promise.resolve().then(() => {
+			if (isActive) {
+				loadUsers();
+			}
+		});
+
+		return () => {
+			isActive = false;
+		};
 	}, [loadUsers]);
 
 	const handleFormFieldChange = (event) => {

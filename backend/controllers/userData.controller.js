@@ -143,7 +143,7 @@ const generateSolarReportForUser = async (req, res) => {
 			{ userDataId: user._id },
 			reportPayload,
 			{
-				new: true,
+				returnDocument: "after",
 				upsert: true,
 				runValidators: true,
 				setDefaultsOnInsert: true
@@ -195,7 +195,7 @@ const updateUserData = async (req, res) => {
 		const updatedData = req.body;
 
 		const user = await UserData.findByIdAndUpdate(userId, updatedData, {
-			new: true,
+			returnDocument: "after",
 			runValidators: true
 		});
 
