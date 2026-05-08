@@ -11,7 +11,7 @@ const userDataSchema = new mongoose.Schema({
     systemCapacity: { type: Number, required: true },
     tiltDeg: { type: Number, required: true },
     azimuthDeg: { type: Number, required: true },
-    shadingFactor: { type: Number, required: true },
+    shadingFactor: { type: Number, default: 0.95 },
     soilingLossPercent: { type: Number, required: true },
     inverterLossPercent: { type: Number, required: true },
     wiringLossPercent: { type: Number, required: true },

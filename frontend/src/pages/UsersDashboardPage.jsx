@@ -14,7 +14,6 @@ const DEFAULT_FORM = {
 	systemCapacity: "",
 	tiltDeg: "",
 	azimuthDeg: "",
-	shadingFactor: "0.95",
 	soilingLossPercent: "2",
 	inverterLossPercent: "3",
 	wiringLossPercent: "2",
@@ -99,7 +98,6 @@ const UsersDashboardPage = () => {
 			systemCapacity: String(user.systemCapacity),
 			tiltDeg: String(user.tiltDeg),
 			azimuthDeg: String(user.azimuthDeg),
-			shadingFactor: String(user.shadingFactor),
 			soilingLossPercent: String(user.soilingLossPercent),
 			inverterLossPercent: String(user.inverterLossPercent),
 			wiringLossPercent: String(user.wiringLossPercent),
@@ -129,12 +127,12 @@ const UsersDashboardPage = () => {
 				systemCapacity: Number(formData.systemCapacity),
 				tiltDeg: Number(formData.tiltDeg),
 				azimuthDeg: Number(formData.azimuthDeg),
-				shadingFactor: Number(formData.shadingFactor),
+				shadingFactor: 0.95,
 				soilingLossPercent: Number(formData.soilingLossPercent),
 				inverterLossPercent: Number(formData.inverterLossPercent),
 				wiringLossPercent: Number(formData.wiringLossPercent),
-				miscLossPercent: Number(formData.miscLossPercent)
-				,dc_ac_ratio: Number(formData.dc_ac_ratio),
+				miscLossPercent: Number(formData.miscLossPercent),
+				dc_ac_ratio: Number(formData.dc_ac_ratio),
 				inv_efficiency: Number(formData.inv_efficiency),
 				bifaciality: Number(formData.bifaciality)
 			};
@@ -398,11 +396,26 @@ const UsersDashboardPage = () => {
 							/>
 							<input className="rounded-lg border border-slate-300 px-3 py-2 text-sm" name="tiltDeg" type="number" step="0.1" value={formData.tiltDeg} onChange={handleFormFieldChange} placeholder="Tilt (deg)" required />
 							<input className="rounded-lg border border-slate-300 px-3 py-2 text-sm" name="azimuthDeg" type="number" step="0.1" value={formData.azimuthDeg} onChange={handleFormFieldChange} placeholder="Azimuth (deg)" required />
-							<input className="rounded-lg border border-slate-300 px-3 py-2 text-sm" name="shadingFactor" type="number" step="0.01" value={formData.shadingFactor} onChange={handleFormFieldChange} placeholder="Shading factor" required />
-							<input className="rounded-lg border border-slate-300 px-3 py-2 text-sm" name="soilingLossPercent" type="number" step="0.1" value={formData.soilingLossPercent} onChange={handleFormFieldChange} placeholder="Soiling loss (%)" required />
-							<input className="rounded-lg border border-slate-300 px-3 py-2 text-sm" name="inverterLossPercent" type="number" step="0.1" value={formData.inverterLossPercent} onChange={handleFormFieldChange} placeholder="Inverter loss (%)" required />
-							<input className="rounded-lg border border-slate-300 px-3 py-2 text-sm" name="wiringLossPercent" type="number" step="0.1" value={formData.wiringLossPercent} onChange={handleFormFieldChange} placeholder="Wiring loss (%)" required />
-							<input className="rounded-lg border border-slate-300 px-3 py-2 text-sm md:col-span-2" name="miscLossPercent" type="number" step="0.1" value={formData.miscLossPercent} onChange={handleFormFieldChange} placeholder="Misc loss (%)" required />
+
+							<div className="flex w-full flex-col">
+								<label htmlFor="soilingLossPercent" className="mb-1 text-xs font-semibold text-slate-600">Soiling loss (%)</label>
+								<input id="soilingLossPercent" name="soilingLossPercent" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" type="number" step="0.1" value={formData.soilingLossPercent} onChange={handleFormFieldChange} placeholder="e.g. 2" required />
+							</div>
+
+							<div className="flex w-full flex-col">
+								<label htmlFor="inverterLossPercent" className="mb-1 text-xs font-semibold text-slate-600">Inverter loss (%)</label>
+								<input id="inverterLossPercent" name="inverterLossPercent" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" type="number" step="0.1" value={formData.inverterLossPercent} onChange={handleFormFieldChange} placeholder="e.g. 3" required />
+							</div>
+
+							<div className="flex w-full flex-col">
+								<label htmlFor="wiringLossPercent" className="mb-1 text-xs font-semibold text-slate-600">Wiring loss (%)</label>
+								<input id="wiringLossPercent" name="wiringLossPercent" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" type="number" step="0.1" value={formData.wiringLossPercent} onChange={handleFormFieldChange} placeholder="e.g. 2" required />
+							</div>
+
+							<div className="flex w-full flex-col md:col-span-2">
+								<label htmlFor="miscLossPercent" className="mb-1 text-xs font-semibold text-slate-600">Misc loss (%)</label>
+								<input id="miscLossPercent" name="miscLossPercent" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" type="number" step="0.1" value={formData.miscLossPercent} onChange={handleFormFieldChange} placeholder="e.g. 1" required />
+							</div>
 							<div className="flex w-full flex-col">
 								<label htmlFor="dc_ac_ratio" className="mb-1 text-xs font-semibold text-slate-600">DC/AC ratio</label>
 								<input id="dc_ac_ratio" name="dc_ac_ratio" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" type="number" step="0.01" value={formData.dc_ac_ratio} onChange={handleFormFieldChange} placeholder="e.g. 1.2" required />
