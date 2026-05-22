@@ -8,6 +8,7 @@ const UserProfileCard = ({ user }) => {
 				<p className="break-all rounded-lg bg-blue-50/60 px-3 py-2"><span className="font-semibold text-slate-900">Email:</span> {user.email}</p>
 				<p className="rounded-lg bg-blue-50/60 px-3 py-2"><span className="font-semibold text-slate-900">Phone:</span> {user.phoneNumber}</p>
 				<p className="rounded-lg bg-blue-50/60 px-3 py-2"><span className="font-semibold text-slate-900">Capacity:</span> {user.systemCapacity} kW</p>
+				<p className="rounded-lg bg-blue-50/60 px-3 py-2"><span className="font-semibold text-slate-900">Number of Panels:</span> {user.numberOfPanels}</p>
 				<p className="rounded-lg bg-blue-50/60 px-3 py-2"><span className="font-semibold text-slate-900">Tilt:</span> {user.tiltDeg} deg</p>
 				<p className="rounded-lg bg-blue-50/60 px-3 py-2"><span className="font-semibold text-slate-900">Azimuth:</span> {user.azimuthDeg} deg</p>
 				<p className="rounded-lg bg-blue-50/60 px-3 py-2"><span className="font-semibold text-slate-900">Latitude:</span> {user.location.latitude}</p>

@@ -143,7 +143,7 @@ const UserReportPage = () => {
 	const selectedReportData = report?.[reportSource] ?? report ?? null;
 
 	return (
-		<div className="min-h-screen bg-[radial-gradient(circle_at_12%_16%,#d7f8e7_0,transparent_42%),radial-gradient(circle_at_88%_20%,#d8e9ff_0,transparent_44%),linear-gradient(135deg,#eff4fb_0%,#edf8f9_100%)] px-3 py-5 sm:px-4 sm:py-6">
+		<div className="min-h-screen bg-slate-50 px-3 py-5 sm:px-4 sm:py-6">
 			<div className="mx-auto max-w-7xl">
 				<div className="mb-5">
 					<p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Solar Report</p>
@@ -187,7 +187,7 @@ const UserReportPage = () => {
 					<div className="grid items-start gap-4 lg:grid-cols-[320px_minmax(0,1fr)] xl:grid-cols-[340px_minmax(0,1fr)]">
 						<UserProfileCard user={user} />
 						<div className="space-y-4">
-							<div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white/70 p-2 shadow-sm backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between">
+							<div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm sm:flex-row sm:items-center sm:justify-between">
 								<div className="inline-flex w-full items-center gap-1 rounded-xl bg-slate-100 p-1 sm:w-auto">
 									<button
 										type="button"
@@ -214,7 +214,7 @@ const UserReportPage = () => {
 								</div>
 
 								{activeReportTab === "monthly" && (
-									<div className="inline-flex w-full items-center gap-1 rounded-xl border border-slate-200 bg-slate-100/60 p-1 sm:w-auto">
+									<div className="inline-flex w-full items-center gap-1 rounded-xl border border-slate-200 bg-slate-100 p-1 sm:w-auto">
 										<button
 											type="button"
 											className={`flex-1 rounded-lg px-4 py-2 text-sm font-semibold transition sm:flex-none ${

@@ -9,6 +9,14 @@ const userDataSchema = new mongoose.Schema({
     email: { type: String, required: true },
     phoneNumber: { type: String, required: true },
     systemCapacity: { type: Number, required: true },
+    numberOfPanels: {
+        type: Number,
+        required: true,
+        validate: {
+            validator: Number.isInteger,
+            message: "numberOfPanels must be an integer"
+        }
+    },
     tiltDeg: { type: Number, required: true },
     azimuthDeg: { type: Number, required: true },
     shadingFactor: { type: Number, default: 0.95 },
