@@ -12,6 +12,7 @@ const DEFAULT_FORM = {
 	latitude: "",
 	longitude: "",
 	systemCapacity: "",
+	numberOfPanels: "",
 	tiltDeg: "",
 	azimuthDeg: "",
 	soilingLossPercent: "2",
@@ -106,6 +107,7 @@ const UsersDashboardPage = () => {
 			latitude: String(user.location?.latitude ?? ""),
 			longitude: String(user.location?.longitude ?? ""),
 			systemCapacity: String(user.systemCapacity),
+			numberOfPanels: String(user.numberOfPanels ?? ""),
 			tiltDeg: String(user.tiltDeg),
 			azimuthDeg: String(user.azimuthDeg),
 			soilingLossPercent: String(user.soilingLossPercent),
@@ -135,6 +137,7 @@ const UsersDashboardPage = () => {
 					longitude: Number(formData.longitude)
 				},
 				systemCapacity: Number(formData.systemCapacity),
+				numberOfPanels: Number(formData.numberOfPanels),
 				tiltDeg: Number(formData.tiltDeg),
 				azimuthDeg: Number(formData.azimuthDeg),
 				shadingFactor: 0.95,
@@ -395,6 +398,7 @@ const UsersDashboardPage = () => {
 							<input className="rounded-lg border border-slate-300 px-3 py-2 text-sm" name="email" type="email" value={formData.email} onChange={handleFormFieldChange} placeholder="Email" required />
 							<input className="rounded-lg border border-slate-300 px-3 py-2 text-sm" name="phoneNumber" value={formData.phoneNumber} onChange={handleFormFieldChange} placeholder="Phone number" required />
 							<input className="rounded-lg border border-slate-300 px-3 py-2 text-sm" name="systemCapacity" type="number" step="0.01" value={formData.systemCapacity} onChange={handleFormFieldChange} placeholder="System capacity (kW)" required />
+							<input className="rounded-lg border border-slate-300 px-3 py-2 text-sm" name="numberOfPanels" type="number" step="1" value={formData.numberOfPanels} onChange={handleFormFieldChange} placeholder="Number of pannels" required />
 							<input className="rounded-lg border border-slate-300 px-3 py-2 text-sm" name="latitude" type="number" step="0.0001" value={formData.latitude} onChange={handleFormFieldChange} placeholder="Latitude" required />
 							<input className="rounded-lg border border-slate-300 px-3 py-2 text-sm" name="longitude" type="number" step="0.0001" value={formData.longitude} onChange={handleFormFieldChange} placeholder="Longitude" required />
 							<MapPicker
