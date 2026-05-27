@@ -13,6 +13,7 @@ from solar_prediction import predict_daily_generation
 from foxes_service import (
     get_generation_data
 )
+from solaredge_daily import get_today_energy
 
 load_dotenv()
 
