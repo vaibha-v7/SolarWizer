@@ -10,6 +10,9 @@ import requests
 from dotenv import load_dotenv
 import os
 from solar_prediction import predict_daily_generation
+from foxes_service import (
+    get_generation_data
+)
 
 load_dotenv()
 
@@ -288,6 +291,26 @@ def predict_today(
     )
 
     return result
+
+@app.get(
+    "/gen/{serial_no}"
+)
+def get_generation(
+    serial_no: str
+):
+
+    try:
+
+        return get_generation_data(
+            serial_no
+        )
+
+    except Exception as e:
+
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )
 
 
 @app.post("/savings")
