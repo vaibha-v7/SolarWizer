@@ -7,6 +7,11 @@ const DAILY_PREDICTION_TIMEZONE = process.env.DAILY_PREDICTION_TIMEZONE || "Asia
 
 const isFiniteNumber = (value) => Number.isFinite(Number(value));
 
+const formatKwh = (value) => {
+	const numberValue = Number(value);
+	return Number.isFinite(numberValue) ? Number(numberValue.toFixed(2)) : null;
+};
+
 const getDailyPredictionDate = (date = new Date()) => date.toISOString().split("T")[0];
 
 async function fetchJsonWithTimeout(url, timeoutMs = 30000) {
@@ -25,6 +30,22 @@ async function fetchJsonWithTimeout(url, timeoutMs = 30000) {
 		clearTimeout(timeout);
 	}
 }
+
+const getTodayInverterGeneration = async (serialNumber) => {
+	if (!serialNumber || !String(serialNumber).trim()) {
+		return "N/A";
+	}
+
+	const generationUrl = new URL(`/gen/${encodeURIComponent(String(serialNumber).trim())}`, AIML_BASE_URL);
+	const generationResponse = await fetchJsonWithTimeout(generationUrl.toString());
+	const todayKwh = generationResponse?.generation?.today_kwh;
+
+	if (!isFiniteNumber(todayKwh)) {
+		return "N/A";
+	}
+
+	return Number(todayKwh).toFixed(2);
+};
 
 /**
  * Fetch daily prediction from AIML API and store in database
@@ -60,7 +81,7 @@ async function fetchAndStoreDailyPredictions(options = {}) {
 			try {
 				const latitude = user.location?.latitude;
 				const longitude = user.location?.longitude;
-				const { systemCapacity, tiltDeg, azimuthDeg } = user;
+				const { systemCapacity, tiltDeg, azimuthDeg, inverterSerialNumber } = user;
 
 				if (
 					!isFiniteNumber(latitude) ||
@@ -86,6 +107,28 @@ async function fetchAndStoreDailyPredictions(options = {}) {
 				aimlUrl.searchParams.append("azimuth", azimuthDeg);
 
 				const prediction = await fetchJsonWithTimeout(aimlUrl.toString());
+				let inverterGenerationToday = "N/A";
+				let differenceKwh = null;
+				let comparison = "N/A";
+
+				try {
+					inverterGenerationToday = await getTodayInverterGeneration(inverterSerialNumber);
+				} catch (inverterError) {
+					console.error(
+						`[Daily Prediction] Inverter generation fetch failed for user ${user._id}:`,
+						inverterError.message
+					);
+				}
+
+				const predictedKwh = formatKwh(prediction.daily_energy_kwh);
+				const inverterKwh = formatKwh(inverterGenerationToday);
+
+				if (predictedKwh !== null && inverterKwh !== null) {
+					differenceKwh = Number((inverterKwh - predictedKwh).toFixed(2));
+					if (differenceKwh > 0) comparison = "greater";
+					else if (differenceKwh < 0) comparison = "lesser";
+					else comparison = "equal";
+				}
 
 				await DailyPrediction.findOneAndUpdate(
 					{ userId: user._id, date: today },
@@ -96,7 +139,9 @@ async function fetchAndStoreDailyPredictions(options = {}) {
 						peak_power_kw: prediction.peak_power_kw || 0,
 						avg_temperature: prediction.avg_temperature || 0,
 						avg_cloud_cover: prediction.avg_cloud_cover || 0,
-						inverter_real_time_kwh: "N/A"
+						inverter_real_time_kwh: inverterGenerationToday,
+						difference_kwh: differenceKwh,
+						comparison
 					},
 					{ upsert: true, returnDocument: "after" }
 				);

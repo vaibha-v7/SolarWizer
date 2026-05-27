@@ -9,6 +9,7 @@ const DEFAULT_FORM = {
 	name: "",
 	email: "",
 	phoneNumber: "",
+	inverterSerialNumber: "",
 	latitude: "",
 	longitude: "",
 	systemCapacity: "",
@@ -104,6 +105,7 @@ const UsersDashboardPage = () => {
 			name: user.name,
 			email: user.email,
 			phoneNumber: user.phoneNumber,
+			inverterSerialNumber: user.inverterSerialNumber ?? "",
 			latitude: String(user.location?.latitude ?? ""),
 			longitude: String(user.location?.longitude ?? ""),
 			systemCapacity: String(user.systemCapacity),
@@ -132,6 +134,7 @@ const UsersDashboardPage = () => {
 				name: formData.name.trim(),
 				email: formData.email.trim(),
 				phoneNumber: formData.phoneNumber.trim(),
+				inverterSerialNumber: formData.inverterSerialNumber.trim(),
 				location: {
 					latitude: Number(formData.latitude),
 					longitude: Number(formData.longitude)
@@ -180,7 +183,7 @@ const UsersDashboardPage = () => {
 
 		return users.filter((user) => {
 			const location = `${user.location?.latitude ?? ""}, ${user.location?.longitude ?? ""}`;
-			return [user.name, user.email, user.phoneNumber, String(user.systemCapacity), location]
+			return [user.name, user.email, user.phoneNumber, user.inverterSerialNumber, String(user.systemCapacity), location]
 				.some((value) => String(value ?? "").toLowerCase().includes(query));
 		});
 	}, [searchText, users]);
@@ -397,6 +400,7 @@ const UsersDashboardPage = () => {
 							<input className="rounded-lg border border-slate-300 px-3 py-2 text-sm" name="name" value={formData.name} onChange={handleFormFieldChange} placeholder="Full name" required />
 							<input className="rounded-lg border border-slate-300 px-3 py-2 text-sm" name="email" type="email" value={formData.email} onChange={handleFormFieldChange} placeholder="Email" required />
 							<input className="rounded-lg border border-slate-300 px-3 py-2 text-sm" name="phoneNumber" value={formData.phoneNumber} onChange={handleFormFieldChange} placeholder="Phone number" required />
+							<input className="rounded-lg border border-slate-300 px-3 py-2 text-sm" name="inverterSerialNumber" value={formData.inverterSerialNumber} onChange={handleFormFieldChange} placeholder="Inverter serial number" required />
 							<input className="rounded-lg border border-slate-300 px-3 py-2 text-sm" name="systemCapacity" type="number" step="0.01" value={formData.systemCapacity} onChange={handleFormFieldChange} placeholder="System capacity (kW)" required />
 							<input className="rounded-lg border border-slate-300 px-3 py-2 text-sm" name="numberOfPanels" type="number" step="1" value={formData.numberOfPanels} onChange={handleFormFieldChange} placeholder="Number of pannels" required />
 							<input className="rounded-lg border border-slate-300 px-3 py-2 text-sm" name="latitude" type="number" step="0.0001" value={formData.latitude} onChange={handleFormFieldChange} placeholder="Latitude" required />

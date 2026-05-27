@@ -8,6 +8,7 @@ const userDataSchema = new mongoose.Schema({
     },
     email: { type: String, required: true },
     phoneNumber: { type: String, required: true },
+    inverterSerialNumber: { type: String, required: true },
     systemCapacity: { type: Number, required: true },
     numberOfPanels: {
         type: Number,
