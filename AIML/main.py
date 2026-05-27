@@ -308,7 +308,27 @@ def get_generation(
     except Exception as e:
 
         raise HTTPException(
-            status_code=500,
+            status_code=404,
+            detail=str(e)
+        )
+
+@app.get("/solaredge/{site_id}")
+def get_site_energy(site_id: str):
+
+    try:
+
+        energy = get_today_energy(site_id)
+
+        return {
+            "site_id": site_id,
+            "today_energy_kwh": energy,
+            "unit": "kWh"
+        }
+
+    except Exception as e:
+
+        raise HTTPException(
+            status_code=404,
             detail=str(e)
         )
 
