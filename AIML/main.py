@@ -156,7 +156,7 @@ def call_pvgis(data: SolarInput):
 
 
 def call_pvwatts(data: SolarInput):
-    url = "https://developer.nrel.gov/api/pvwatts/v8.json"
+    url = "https://developer.nlr.gov/api/pvwatts/v8.json"
 
     # realistic losses
     total_losses = max(sum(data.losses), 15)
