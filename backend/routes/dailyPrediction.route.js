@@ -45,10 +45,12 @@ router.get("/:userId/daily-predictions", async (req, res) => {
 		const formattedData = predictions.map((pred) => ({
 			date: pred.date,
 			predicted_kwh: formatNumber(pred.predicted_kwh),
-			inverter_real_time_kwh: pred.inverter_real_time_kwh || "N/A",
+			inverter_real_time_kwh: pred.inverter_real_time_kwh ?? "N/A",
 			peak_power_kw: formatNumber(pred.peak_power_kw),
 			avg_temperature: formatNumber(pred.avg_temperature),
-			avg_cloud_cover: formatNumber(pred.avg_cloud_cover)
+			avg_cloud_cover: formatNumber(pred.avg_cloud_cover),
+			difference_kwh: Number.isFinite(Number(pred.difference_kwh)) ? Number(Number(pred.difference_kwh).toFixed(2)) : null,
+			comparison: pred.comparison ?? "N/A"
 		}));
 
 		res.status(200).json({

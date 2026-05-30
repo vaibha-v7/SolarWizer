@@ -19,7 +19,7 @@ const UserReportPage = () => {
 	const [report, setReport] = useState(null);
 	const [dailyPredictions, setDailyPredictions] = useState([]);
 	const [reportSource, setReportSource] = useState("pvgis");
-	const [activeReportTab, setActiveReportTab] = useState("monthly");
+	const [activeReportTab, setActiveReportTab] = useState("daily");
 	const [loading, setLoading] = useState(true);
 	const [refreshing, setRefreshing] = useState(false);
 	const [error, setError] = useState("");

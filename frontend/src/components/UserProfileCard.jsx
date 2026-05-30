@@ -7,6 +7,7 @@ const UserProfileCard = ({ user }) => {
 			<div className="mt-3 grid gap-2 text-sm text-slate-700">
 				<p className="break-all rounded-lg bg-blue-50/60 px-3 py-2"><span className="font-semibold text-slate-900">Email:</span> {user.email}</p>
 				<p className="rounded-lg bg-blue-50/60 px-3 py-2"><span className="font-semibold text-slate-900">Phone:</span> {user.phoneNumber}</p>
+				<p className="rounded-lg bg-blue-50/60 px-3 py-2"><span className="font-semibold text-slate-900">Inverter Serial:</span> {user.inverterSerialNumber || "N/A"}</p>
 				<p className="rounded-lg bg-blue-50/60 px-3 py-2"><span className="font-semibold text-slate-900">Capacity:</span> {user.systemCapacity} kW</p>
 				<p className="rounded-lg bg-blue-50/60 px-3 py-2"><span className="font-semibold text-slate-900">Number of Panels:</span> {user.numberOfPanels}</p>
 				<p className="rounded-lg bg-blue-50/60 px-3 py-2"><span className="font-semibold text-slate-900">Tilt:</span> {user.tiltDeg} deg</p>

@@ -30,9 +30,36 @@ const formatNumber = (value, suffix = "") => {
 	return `${numberValue.toFixed(2)}${suffix}`;
 };
 
+const getComparisonBadgeClasses = (comparison) => {
+	if (comparison === "greater") {
+		return "bg-emerald-100 text-emerald-800";
+	}
+
+	if (comparison === "lesser") {
+		return "bg-rose-100 text-rose-800";
+	}
+
+	if (comparison === "equal") {
+		return "bg-blue-100 text-blue-800";
+	}
+
+	return "bg-slate-100 text-slate-700";
+};
+
+const toComparableNumber = (value) => {
+	const numberValue = Number(value);
+	return Number.isFinite(numberValue) ? numberValue : null;
+};
+
 const DailyPredictionTable = ({ predictions = [], loading = false, error = "", fetching = false, onFetchNow }) => {
 	const latestPrediction = predictions[0];
 	const totalPredicted = predictions.reduce((sum, prediction) => sum + Number(prediction.predicted_kwh ?? 0), 0);
+	const latestActual = toComparableNumber(latestPrediction?.inverter_real_time_kwh);
+	const latestPredicted = toComparableNumber(latestPrediction?.predicted_kwh);
+	const latestDifference = latestActual !== null && latestPredicted !== null
+		? latestActual - latestPredicted
+		: null;
+	const latestComparison = latestPrediction?.comparison ?? "N/A";
 
 	return (
 		<div className="rounded-2xl border border-slate-300/60 bg-white/90 p-5 shadow-lg backdrop-blur-sm">
@@ -60,7 +87,7 @@ const DailyPredictionTable = ({ predictions = [], loading = false, error = "", f
 			{error && <p className="mt-3 text-sm font-semibold text-rose-700">{error}</p>}
 
 			{!loading && !error && predictions.length > 0 && (
-				<div className="mt-5 grid border-y border-slate-200 py-4 sm:grid-cols-2 xl:grid-cols-4">
+				<div className="mt-5 grid border-y border-slate-200 py-4 sm:grid-cols-2 xl:grid-cols-6">
 					<div className="px-1 py-2 sm:px-3">
 						<p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Latest Date</p>
 						<p className="mt-1 text-xl font-bold text-slate-900">{formatDate(latestPrediction?.date)}</p>
@@ -75,7 +102,19 @@ const DailyPredictionTable = ({ predictions = [], loading = false, error = "", f
 					</div>
 					<div className="px-1 py-2 sm:px-3">
 						<p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Inverter API</p>
-						<p className="mt-1 text-xl font-bold text-slate-900">{formatNumber(latestPrediction?.inverter_real_time_kwh)}</p>
+						<p className="mt-1 text-xl font-bold text-slate-900">{formatNumber(latestPrediction?.inverter_real_time_kwh, " kWh")}</p>
+					</div>
+					<div className="px-1 py-2 sm:px-3">
+						<p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Today Difference</p>
+						<p className={`mt-1 text-xl font-bold ${latestDifference === null ? "text-slate-700" : latestDifference >= 0 ? "text-emerald-700" : "text-rose-700"}`}>
+							{latestDifference === null ? "N/A" : `${latestDifference.toFixed(2)} kWh`}
+						</p>
+					</div>
+					<div className="px-1 py-2 sm:px-3">
+						<p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Comparison</p>
+						<span className={`mt-1 inline-flex rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide ${getComparisonBadgeClasses(latestComparison)}`}>
+							{latestComparison}
+						</span>
 					</div>
 				</div>
 			)}
@@ -95,6 +134,8 @@ const DailyPredictionTable = ({ predictions = [], loading = false, error = "", f
 								<th className="border-b border-slate-200 bg-blue-50/70 px-3 py-3 text-xs font-bold uppercase tracking-wide text-slate-600">Date</th>
 								<th className="border-b border-slate-200 bg-blue-50/70 px-3 py-3 text-xs font-bold uppercase tracking-wide text-slate-600">Predicted (kWh)</th>
 								<th className="border-b border-slate-200 bg-blue-50/70 px-3 py-3 text-xs font-bold uppercase tracking-wide text-slate-600">Inverter (kWh)</th>
+								<th className="border-b border-slate-200 bg-blue-50/70 px-3 py-3 text-xs font-bold uppercase tracking-wide text-slate-600">Difference (kWh)</th>
+								<th className="border-b border-slate-200 bg-blue-50/70 px-3 py-3 text-xs font-bold uppercase tracking-wide text-slate-600">Comparison</th>
 								<th className="border-b border-slate-200 bg-blue-50/70 px-3 py-3 text-xs font-bold uppercase tracking-wide text-slate-600">Peak Power (kW)</th>
 								<th className="border-b border-slate-200 bg-blue-50/70 px-3 py-3 text-xs font-bold uppercase tracking-wide text-slate-600">Avg Temp (C)</th>
 								<th className="border-b border-slate-200 bg-blue-50/70 px-3 py-3 text-xs font-bold uppercase tracking-wide text-slate-600">Cloud Cover (%)</th>
@@ -111,6 +152,14 @@ const DailyPredictionTable = ({ predictions = [], loading = false, error = "", f
 									</td>
 									<td className="whitespace-nowrap border-b border-slate-100 px-3 py-3">
 										{formatNumber(prediction.inverter_real_time_kwh)}
+									</td>
+									<td className="whitespace-nowrap border-b border-slate-100 px-3 py-3">
+										{formatNumber(prediction.difference_kwh)}
+									</td>
+									<td className="whitespace-nowrap border-b border-slate-100 px-3 py-3">
+										<span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide ${getComparisonBadgeClasses(prediction.comparison)}`}>
+											{prediction.comparison ?? "N/A"}
+										</span>
 									</td>
 									<td className="whitespace-nowrap border-b border-slate-100 px-3 py-3">
 										{formatNumber(prediction.peak_power_kw)}

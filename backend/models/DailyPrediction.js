@@ -33,6 +33,14 @@ const dailyPredictionSchema = new mongoose.Schema(
 			type: String,
 			default: "N/A" // Placeholder for future inverter API integration
 		},
+		difference_kwh: {
+			type: Number,
+			default: null
+		},
+		comparison: {
+			type: String,
+			default: "N/A"
+		},
 		createdAt: {
 			type: Date,
 			default: Date.now,
