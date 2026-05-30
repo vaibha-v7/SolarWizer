@@ -8,10 +8,20 @@ const formatRatio = (value) => {
 	return ratio ? `${(ratio * 100).toFixed(1)}%` : "0.0%";
 };
 
-const siteLabel = (value) => {
-	const id = String(value || "unknown");
-	if (id === "unknown") return "Site Unknown";
+const siteLabel = (name, userId) => {
+	const label = String(name || "").trim();
+	if (label) return label;
+	const id = String(userId || "unknown");
+	if (id === "unknown") return "Unknown Site";
 	return `Site ${id.slice(-6).toUpperCase()}`;
+};
+
+const getGapLabel = (ratio) => {
+	const gap = 100 - ratio * 100;
+	if (gap <= 5) return { label: "Slightly below average", color: "text-amber-600" };
+	if (gap <= 15) return { label: "Noticeably underproducing", color: "text-orange-600" };
+	if (gap <= 25) return { label: "Significantly underproducing", color: "text-rose-600" };
+	return { label: "Critically underproducing", color: "text-red-700" };
 };
 
 const SOICDegradedSites = ({ metrics = {} }) => {
@@ -20,8 +30,9 @@ const SOICDegradedSites = ({ metrics = {} }) => {
 	return (
 		<section className="overflow-hidden rounded-2xl border border-orange-200/80 bg-white/90 shadow-sm">
 			<div className="border-b border-orange-100 bg-gradient-to-r from-orange-50 to-amber-50 px-4 py-3 sm:px-5">
-				<p className="text-xs font-bold uppercase tracking-[0.14em] text-orange-700">Degradation Watch</p>
-				<h2 className="mt-1 text-lg font-bold text-slate-900">Most Degraded Sites</h2>
+				<p className="text-xs font-bold uppercase tracking-[0.14em] text-orange-700">📉 Needs Attention</p>
+				<h2 className="mt-1 text-lg font-bold text-slate-900">Underperforming Sites</h2>
+				<p className="mt-0.5 text-xs text-slate-500">Sites producing less than expected from their live inverter data</p>
 			</div>
 
 			<div className="p-4 sm:p-5">
@@ -30,6 +41,7 @@ const SOICDegradedSites = ({ metrics = {} }) => {
 						{list.map((site, index) => {
 							const ratio = safeNumber(site.performance_ratio);
 							const barWidth = Math.max(8, Math.min(100, ratio * 100));
+							const gapInfo = getGapLabel(ratio);
 
 							return (
 								<div key={`${site.user_id || "site"}-${index}`} className="rounded-xl border border-orange-100 bg-orange-50/55 p-3 transition hover:border-orange-200 hover:bg-orange-50">
@@ -39,11 +51,14 @@ const SOICDegradedSites = ({ metrics = {} }) => {
 												{index + 1}
 											</span>
 											<div className="min-w-0">
-												<p className="truncate text-sm font-bold text-slate-900">{site.user_name || siteLabel(site.user_id)}</p>
-												<p className="text-xs font-semibold text-orange-700">Underperforming ratio</p>
+												<p className="truncate text-sm font-bold text-slate-900">{siteLabel(site.user_name, site.user_id)}</p>
+												<p className={`text-xs font-semibold ${gapInfo.color}`}>{gapInfo.label}</p>
 											</div>
 										</div>
-										<p className="text-lg font-bold text-orange-700">{formatRatio(ratio)}</p>
+										<div className="shrink-0 text-right">
+											<p className="text-lg font-bold text-orange-700">{formatRatio(ratio)}</p>
+											<p className="text-xs text-slate-400">of target</p>
+										</div>
 									</div>
 									<div className="mt-3 h-2 overflow-hidden rounded-full bg-white">
 										<div className="h-full rounded-full bg-gradient-to-r from-orange-500 to-amber-400" style={{ width: `${barWidth}%` }} />
@@ -54,11 +69,11 @@ const SOICDegradedSites = ({ metrics = {} }) => {
 					</div>
 				) : (
 					<div className="py-8 text-center">
-						<div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-xs font-black text-emerald-700">
-							OK
+						<div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-xl">
+							✅
 						</div>
-						<p className="mt-3 text-sm font-bold text-slate-700">No degraded sites currently</p>
-						<p className="mt-1 text-xs text-slate-500">Underperformers will appear when the daily baseline detects drift.</p>
+						<p className="mt-3 text-sm font-bold text-slate-700">No underperforming sites</p>
+						<p className="mt-1 text-xs text-slate-500">Sites with live data are all within expected output range.</p>
 					</div>
 				)}
 			</div>

@@ -175,6 +175,7 @@ const key = String(row.user_id);
 if (!latestByUser.has(key)) latestByUser.set(key, row);
 }
 const watchlist = Array.from(latestByUser.values())
+		.filter((row) => row.data_source === 'daily_prediction_inverter')
 .filter((row) => {
 const baseline = Number(row.site_baseline_ratio || 0);
 if (!baseline) return row.performance_ratio >= 0.88 && row.performance_ratio < 0.95;
@@ -212,6 +213,7 @@ const key = String(row.user_id);
 if (!latestByUser.has(key)) latestByUser.set(key, row);
 }
 const watchlist = Array.from(latestByUser.values())
+		.filter((row) => row.data_source === 'daily_prediction_inverter')
 .filter((row) => {
 const baseline = Number(row.site_baseline_ratio || 0);
 if (!baseline) return row.performance_ratio >= 0.88 && row.performance_ratio < 0.95;

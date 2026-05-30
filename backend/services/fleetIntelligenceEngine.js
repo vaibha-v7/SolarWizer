@@ -47,7 +47,13 @@ async function calculateFleetMetrics() {
 
 	const userIds = users.map((user) => user._id);
 	const performances = await getLatestPerformanceByUser(userIds);
-	const performanceRatios = performances.map((item) => item.performance_ratio).filter(Number.isFinite);
+
+	// Only include sites with actual inverter telemetry in PR-based statistics.
+	// Sites without real-time data have a synthetic designRatio value that skews fleet metrics.
+	const realTimePerformances = performances.filter(
+		(item) => item.data_source === "daily_prediction_inverter"
+	);
+	const performanceRatios = realTimePerformances.map((item) => item.performance_ratio).filter(Number.isFinite);
 	const sorted = [...performanceRatios].sort((a, b) => a - b);
 	const percentiles = calculatePercentiles(sorted);
 	const healthScores = await SiteHealthScore.find({ user_id: { $in: userIds } }).lean();
@@ -79,7 +85,8 @@ async function calculateFleetMetrics() {
 		return acc;
 	}, {});
 
-	const ranked = performances
+	// Rankings and degraded lists are also limited to real-time sites only.
+	const ranked = realTimePerformances
 		.map((item) => ({
 			user_id: item.user_id,
 			user_name: userNamesById[String(item.user_id)] || "",
