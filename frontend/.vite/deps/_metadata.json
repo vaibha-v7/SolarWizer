@@ -1,0 +1,54 @@
+{
+  "hash": "d1b27f95",
+  "configHash": "5940e98c",
+  "lockfileHash": "1a9dbfe0",
+  "browserHash": "7b87071b",
+  "optimized": {
+    "exceljs": {
+      "src": "../../node_modules/exceljs/dist/exceljs.min.js",
+      "file": "exceljs.js",
+      "fileHash": "950060fd",
+      "needsInterop": true
+    },
+    "leaflet": {
+      "src": "../../node_modules/leaflet/dist/leaflet-src.js",
+      "file": "leaflet.js",
+      "fileHash": "a94cd7ba",
+      "needsInterop": true
+    },
+    "react-dom/client": {
+      "src": "../../node_modules/react-dom/client.js",
+      "file": "react-dom_client.js",
+      "fileHash": "98f01b4a",
+      "needsInterop": true
+    },
+    "react-router-dom": {
+      "src": "../../node_modules/react-router-dom/dist/index.mjs",
+      "file": "react-router-dom.js",
+      "fileHash": "52a89041",
+      "needsInterop": false
+    },
+    "react": {
+      "src": "../../node_modules/react/index.js",
+      "file": "react.js",
+      "fileHash": "d340a25f",
+      "needsInterop": true
+    },
+    "react/jsx-dev-runtime": {
+      "src": "../../node_modules/react/jsx-dev-runtime.js",
+      "file": "react_jsx-dev-runtime.js",
+      "fileHash": "1403bdca",
+      "needsInterop": true
+    }
+  },
+  "chunks": {
+    "chunk-CegL5Rro": {
+      "file": "chunk-CegL5Rro.js",
+      "isDynamicEntry": false
+    },
+    "react-dom-BbFxlBoN": {
+      "file": "react-dom-BbFxlBoN.js",
+      "isDynamicEntry": false
+    }
+  }
+}

@@ -201,7 +201,7 @@ const UsersDashboardPage = () => {
 	}, [users]);
 
 	return (
-		<div className="min-h-screen bg-[radial-gradient(circle_at_12%_16%,#d7f8e7_0,transparent_42%),radial-gradient(circle_at_88%_20%,#d8e9ff_0,transparent_44%),linear-gradient(135deg,#eff4fb_0%,#edf8f4_55%,#f8fbff_100%)]">
+		<div className="min-h-screen bg-[radial-gradient(circle_at_12%_16%,#d7f8e7_0,transparent_42%),radial-gradient(circle_at_88%_20%,#d8e9ff_0,transparent_44%),linear-gradient(135deg,#eff4fb_0%,#edf8ff_100%)]">
 			<aside className="fixed inset-y-0 left-0 z-40 hidden w-64 border-r border-slate-200/80 bg-white/88 px-5 pb-6 pt-8 shadow-lg backdrop-blur-md lg:flex lg:flex-col">
 				<div className="mb-8 flex items-center gap-3">
 					{/* <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-200 to-blue-200 text-lg text-slate-900 shadow">
@@ -227,6 +227,18 @@ const UsersDashboardPage = () => {
 					>
 						Add New User
 					</button>
+
+					{/* SOIC Dashboard Link */}
+					<div className="mt-6 border-t border-slate-200 pt-4">
+						<p className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">Operations</p>
+						<button
+							type="button"
+							className="w-full rounded-xl border border-amber-200 bg-gradient-to-r from-amber-50/80 to-orange-50/80 px-3 py-2.5 text-left text-sm font-semibold text-amber-800 transition hover:bg-amber-100/50"
+							onClick={() => navigate("/soic")}
+						>
+							🚨 Operations Center
+						</button>
+					</div>
 				</nav>
 
 				<div className="mt-auto space-y-2">
@@ -251,7 +263,7 @@ const UsersDashboardPage = () => {
 						<p className="text-sm font-bold text-slate-800 lg:hidden">SolarWizer Users</p>
 					</div>
 					<div className="flex w-full items-center justify-end gap-3 sm:w-auto">
-						<div className="w-full rounded-full border-2 border-emerald-300/90 bg-white shadow-[0_0_0_4px_rgba(16,185,129,0.12)] transition focus-within:border-emerald-500 focus-within:shadow-[0_0_0_5px_rgba(16,185,129,0.2)] sm:w-80">
+						<div className="w-full rounded-full border-2 border-emerald-300/90 bg-white shadow-[0_0_0_4px_rgba(16,185,129,0.12)] transition focus-within:border-emerald-500 focus-within:shadow-[0_0_0_5px_rgba(16,185,129,0.15)]">
 							<input
 								type="text"
 								value={searchText}
@@ -400,9 +412,9 @@ const UsersDashboardPage = () => {
 							<input className="rounded-lg border border-slate-300 px-3 py-2 text-sm" name="name" value={formData.name} onChange={handleFormFieldChange} placeholder="Full name" required />
 							<input className="rounded-lg border border-slate-300 px-3 py-2 text-sm" name="email" type="email" value={formData.email} onChange={handleFormFieldChange} placeholder="Email" required />
 							<input className="rounded-lg border border-slate-300 px-3 py-2 text-sm" name="phoneNumber" value={formData.phoneNumber} onChange={handleFormFieldChange} placeholder="Phone number" required />
-							<input className="rounded-lg border border-slate-300 px-3 py-2 text-sm" name="inverterSerialNumber" value={formData.inverterSerialNumber} onChange={handleFormFieldChange} placeholder="Inverter serial number" required />
-							<input className="rounded-lg border border-slate-300 px-3 py-2 text-sm" name="systemCapacity" type="number" step="0.01" value={formData.systemCapacity} onChange={handleFormFieldChange} placeholder="System capacity (kW)" required />
-							<input className="rounded-lg border border-slate-300 px-3 py-2 text-sm" name="numberOfPanels" type="number" step="1" value={formData.numberOfPanels} onChange={handleFormFieldChange} placeholder="Number of pannels" required />
+							<input className="rounded-lg border border-slate-300 px-3 py-2 text-sm" name="inverterSerialNumber" value={formData.inverterSerialNumber} onChange={handleFormFieldChange} placeholder="Inverter Serial Number" />
+							<input className="rounded-lg border border-slate-300 px-3 py-2 text-sm" name="systemCapacity" type="number" step="0.01" value={formData.systemCapacity} onChange={handleFormFieldChange} placeholder="System Capacity (kW)" required />
+							<input className="rounded-lg border border-slate-300 px-3 py-2 text-sm" name="numberOfPanels" type="number" step="1" value={formData.numberOfPanels} onChange={handleFormFieldChange} placeholder="Number of Panels" required />
 							<input className="rounded-lg border border-slate-300 px-3 py-2 text-sm" name="latitude" type="number" step="0.0001" value={formData.latitude} onChange={handleFormFieldChange} placeholder="Latitude" required />
 							<input className="rounded-lg border border-slate-300 px-3 py-2 text-sm" name="longitude" type="number" step="0.0001" value={formData.longitude} onChange={handleFormFieldChange} placeholder="Longitude" required />
 							<MapPicker
@@ -412,41 +424,41 @@ const UsersDashboardPage = () => {
 									setFormData((prev) => ({ ...prev, latitude: String(lat), longitude: String(lng) }))
 								}
 							/>
-							<input className="rounded-lg border border-slate-300 px-3 py-2 text-sm" name="tiltDeg" type="number" step="0.1" value={formData.tiltDeg} onChange={handleFormFieldChange} placeholder="Tilt (deg)" required />
-							<input className="rounded-lg border border-slate-300 px-3 py-2 text-sm" name="azimuthDeg" type="number" step="0.1" value={formData.azimuthDeg} onChange={handleFormFieldChange} placeholder="Azimuth (deg)" required />
+							<input className="rounded-lg border border-slate-300 px-3 py-2 text-sm" name="tiltDeg" type="number" step="0.1" value={formData.tiltDeg} onChange={handleFormFieldChange} placeholder="Tilt Angle (degrees)" required />
+							<input className="rounded-lg border border-slate-300 px-3 py-2 text-sm" name="azimuthDeg" type="number" step="0.1" value={formData.azimuthDeg} onChange={handleFormFieldChange} placeholder="Azimuth Angle (degrees)" required />
 
 							<div className="flex w-full flex-col">
 								<label htmlFor="soilingLossPercent" className="mb-1 text-xs font-semibold text-slate-600">Soiling loss (%)</label>
-								<input id="soilingLossPercent" name="soilingLossPercent" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" type="number" step="0.1" value={formData.soilingLossPercent} onChange={handleFormFieldChange} placeholder="e.g. 2" required />
+								<input id="soilingLossPercent" name="soilingLossPercent" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" type="number" step="0.1" value={formData.soilingLossPercent} onChange={handleFormFieldChange} required />
 							</div>
 
 							<div className="flex w-full flex-col">
 								<label htmlFor="inverterLossPercent" className="mb-1 text-xs font-semibold text-slate-600">Inverter loss (%)</label>
-								<input id="inverterLossPercent" name="inverterLossPercent" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" type="number" step="0.1" value={formData.inverterLossPercent} onChange={handleFormFieldChange} placeholder="e.g. 3" required />
+								<input id="inverterLossPercent" name="inverterLossPercent" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" type="number" step="0.1" value={formData.inverterLossPercent} onChange={handleFormFieldChange} required />
 							</div>
 
 							<div className="flex w-full flex-col">
 								<label htmlFor="wiringLossPercent" className="mb-1 text-xs font-semibold text-slate-600">Wiring loss (%)</label>
-								<input id="wiringLossPercent" name="wiringLossPercent" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" type="number" step="0.1" value={formData.wiringLossPercent} onChange={handleFormFieldChange} placeholder="e.g. 2" required />
+								<input id="wiringLossPercent" name="wiringLossPercent" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" type="number" step="0.1" value={formData.wiringLossPercent} onChange={handleFormFieldChange} required />
 							</div>
 
 							<div className="flex w-full flex-col md:col-span-2">
 								<label htmlFor="miscLossPercent" className="mb-1 text-xs font-semibold text-slate-600">Misc loss (%)</label>
-								<input id="miscLossPercent" name="miscLossPercent" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" type="number" step="0.1" value={formData.miscLossPercent} onChange={handleFormFieldChange} placeholder="e.g. 1" required />
+								<input id="miscLossPercent" name="miscLossPercent" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" type="number" step="0.1" value={formData.miscLossPercent} onChange={handleFormFieldChange} required />
 							</div>
 							<div className="flex w-full flex-col">
 								<label htmlFor="dc_ac_ratio" className="mb-1 text-xs font-semibold text-slate-600">DC/AC ratio</label>
-								<input id="dc_ac_ratio" name="dc_ac_ratio" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" type="number" step="0.01" value={formData.dc_ac_ratio} onChange={handleFormFieldChange} placeholder="e.g. 1.2" required />
+								<input id="dc_ac_ratio" name="dc_ac_ratio" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" type="number" step="0.01" value={formData.dc_ac_ratio} onChange={handleFormFieldChange} required />
 							</div>
 
 							<div className="flex w-full flex-col">
 								<label htmlFor="inv_efficiency" className="mb-1 text-xs font-semibold text-slate-600">Inverter efficiency (%)</label>
-								<input id="inv_efficiency" name="inv_efficiency" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" type="number" step="0.1" value={formData.inv_efficiency} onChange={handleFormFieldChange} placeholder="e.g. 98" required />
+								<input id="inv_efficiency" name="inv_efficiency" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" type="number" step="0.1" value={formData.inv_efficiency} onChange={handleFormFieldChange} required />
 							</div>
 
 							<div className="flex w-full flex-col">
 								<label htmlFor="bifaciality" className="mb-1 text-xs font-semibold text-slate-600">Bifaciality</label>
-								<input id="bifaciality" name="bifaciality" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" type="number" step="0.01" value={formData.bifaciality} onChange={handleFormFieldChange} placeholder="e.g. 0" required />
+								<input id="bifaciality" name="bifaciality" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" type="number" step="0.01" value={formData.bifaciality} onChange={handleFormFieldChange} required />
 							</div>
 
 							{submitError && <p className="md:col-span-2 text-sm font-semibold text-rose-700">{submitError}</p>}
