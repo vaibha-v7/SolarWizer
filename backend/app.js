@@ -5,6 +5,7 @@ dotenv.config();
 
 const userDataRoute = require("./routes/userData.route");
 const dailyPredictionRoute = require("./routes/dailyPrediction.route");
+const soicAlertsRoute = require("./routes/soicAlerts.route");
 const { initializeDailyPredictionScheduler } = require("./services/dailyPredictionScheduler");
 
 require("./services/db");
@@ -25,6 +26,7 @@ app.use((req, res, next) => {
 
 app.use("/", userDataRoute);
 app.use("/users", dailyPredictionRoute);
+app.use("/soic", soicAlertsRoute);
 
 app.get("/", (req, res) => {
 	res.send("Backend running");
