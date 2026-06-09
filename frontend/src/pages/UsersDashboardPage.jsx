@@ -412,7 +412,7 @@ const UsersDashboardPage = () => {
 							<input className="rounded-lg border border-slate-300 px-3 py-2 text-sm" name="name" value={formData.name} onChange={handleFormFieldChange} placeholder="Full name" required />
 							<input className="rounded-lg border border-slate-300 px-3 py-2 text-sm" name="email" type="email" value={formData.email} onChange={handleFormFieldChange} placeholder="Email" required />
 							<input className="rounded-lg border border-slate-300 px-3 py-2 text-sm" name="phoneNumber" value={formData.phoneNumber} onChange={handleFormFieldChange} placeholder="Phone number" required />
-							<input className="rounded-lg border border-slate-300 px-3 py-2 text-sm" name="inverterSerialNumber" value={formData.inverterSerialNumber} onChange={handleFormFieldChange} placeholder="Inverter Serial Number" />
+							<input className="rounded-lg border border-slate-300 px-3 py-2 text-sm" name="inverterSerialNumber" value={formData.inverterSerialNumber} onChange={handleFormFieldChange} placeholder="Inverter Serial Number" required />
 							<input className="rounded-lg border border-slate-300 px-3 py-2 text-sm" name="systemCapacity" type="number" step="0.01" value={formData.systemCapacity} onChange={handleFormFieldChange} placeholder="System Capacity (kW)" required />
 							<input className="rounded-lg border border-slate-300 px-3 py-2 text-sm" name="numberOfPanels" type="number" step="1" value={formData.numberOfPanels} onChange={handleFormFieldChange} placeholder="Number of Panels" required />
 							<input className="rounded-lg border border-slate-300 px-3 py-2 text-sm" name="latitude" type="number" step="0.0001" value={formData.latitude} onChange={handleFormFieldChange} placeholder="Latitude" required />
