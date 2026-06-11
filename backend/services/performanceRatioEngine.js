@@ -134,8 +134,8 @@ const buildSnapshotPayload = async ({ user, monthlyReport, prediction, date, dat
 		.limit(30)
 		.lean();
 	const anomalyCheck = detectAnomaly(ratio, history.map((item) => item.performance_ratio));
-	const hasSerial = Boolean(String(user.inverterSerialNumber || "").trim());
-	const telemetryMissing = Boolean(prediction && hasSerial && !hasActualTelemetry);
+	const hasTelemetrySource = Boolean(String(user.inverterSerialNumber || "").trim() || String(user.siteId || "").trim());
+	const telemetryMissing = Boolean(prediction && hasTelemetrySource && !hasActualTelemetry);
 	const baselineDriftPercent = baselineRatio > 0 ? ((ratio - baselineRatio) / baselineRatio) * 100 : 0;
 	const sources = [
 		...(prediction ? ["DailyPrediction"] : []),

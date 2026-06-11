@@ -1,6 +1,7 @@
 const cron = require("node-cron");
 const DailyPrediction = require("../models/DailyPrediction");
 const UserData = require("../models/data");
+const { getTodayInverterGeneration } = require("./inverterTelemetryService");
 
 const AIML_BASE_URL = process.env.AIML_BASE_URL || process.env.AIML_API_URL || "http://127.0.0.1:8000";
 const DAILY_PREDICTION_TIMEZONE = process.env.DAILY_PREDICTION_TIMEZONE || "Asia/Kolkata";
@@ -30,22 +31,6 @@ async function fetchJsonWithTimeout(url, timeoutMs = 30000) {
 		clearTimeout(timeout);
 	}
 }
-
-const getTodayInverterGeneration = async (serialNumber) => {
-	if (!serialNumber || !String(serialNumber).trim()) {
-		return "N/A";
-	}
-
-	const generationUrl = new URL(`/gen/${encodeURIComponent(String(serialNumber).trim())}`, AIML_BASE_URL);
-	const generationResponse = await fetchJsonWithTimeout(generationUrl.toString());
-	const todayKwh = generationResponse?.generation?.today_kwh;
-
-	if (!isFiniteNumber(todayKwh)) {
-		return "N/A";
-	}
-
-	return Number(todayKwh).toFixed(2);
-};
 
 /**
  * Fetch daily prediction from AIML API and store in database
@@ -81,7 +66,7 @@ async function fetchAndStoreDailyPredictions(options = {}) {
 			try {
 				const latitude = user.location?.latitude;
 				const longitude = user.location?.longitude;
-				const { systemCapacity, tiltDeg, azimuthDeg, inverterSerialNumber } = user;
+				const { systemCapacity, tiltDeg, azimuthDeg, inverterSerialNumber, siteId } = user;
 
 				if (
 					!isFiniteNumber(latitude) ||
@@ -112,7 +97,12 @@ async function fetchAndStoreDailyPredictions(options = {}) {
 				let comparison = "N/A";
 
 				try {
-					inverterGenerationToday = await getTodayInverterGeneration(inverterSerialNumber);
+					inverterGenerationToday = await getTodayInverterGeneration({
+						inverterSerialNumber,
+						siteId,
+						fetchJsonWithTimeout,
+						baseUrl: AIML_BASE_URL
+					});
 				} catch (inverterError) {
 					console.error(
 						`[Daily Prediction] Inverter generation fetch failed for user ${user._id}:`,

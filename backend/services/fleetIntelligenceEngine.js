@@ -64,7 +64,8 @@ async function calculateFleetMetrics() {
 
 	const byInverterType = users.reduce((acc, user) => {
 		const serial = String(user.inverterSerialNumber || "").toLowerCase();
-		const type = serial.startsWith("fox") ? "foxes" : serial ? "solaredge" : "not_configured";
+		const siteId = String(user.siteId || "").trim();
+		const type = serial.startsWith("fox") ? "foxes" : serial ? "solaredge" : siteId ? "solaredge_site" : "not_configured";
 		acc[type] = (acc[type] || 0) + 1;
 		return acc;
 	}, {});

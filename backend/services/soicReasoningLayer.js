@@ -56,13 +56,13 @@ const buildOperationalReasoning = ({ user = {}, latest = {}, history = [], basel
 	const olderAverage = average(olderRatios);
 	const cloud = safeNumber(latest.avg_cloud_cover_percent);
 	const temp = safeNumber(latest.avg_temperature_c);
-	const hasInverter = Boolean(user.inverterSerialNumber);
+	const hasTelemetrySource = Boolean(String(user.inverterSerialNumber || "").trim() || String(user.siteId || "").trim());
 	const hasTelemetry = latest.data_source === "daily_prediction_inverter";
 	const causes = [];
 	const recommendations = [];
 	const evidence = [];
 
-	if (latest.is_data_quality_issue || (hasInverter && !hasTelemetry)) {
+	if (latest.is_data_quality_issue || (hasTelemetrySource && !hasTelemetry)) {
 		causes.push("Inverter telemetry gap");
 		recommendations.push("Verify inverter connectivity and serial mapping before dispatching field maintenance.");
 		evidence.push("inverter telemetry is missing or incomplete");
