@@ -98,7 +98,7 @@ def predict_daily_generation(
 
     pdc0 = capacity_kw * 1000  # system size in watts
 
-    gamma_pdc = -0.0035  # temperature coefficient
+    gamma_pdc = -0.0028  # temperature coefficient
 
     dc_power = pvlib.pvsystem.pvwatts_dc(
         g_poa_effective=poa["poa_global"],
