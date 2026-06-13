@@ -70,25 +70,12 @@ export const getFriendlyRecommendation = (text) => {
 	return value;
 };
 
-// ─── Priority → human label + urgency colour ─────────────────────────────────
-export const priorityMeta = {
-	P5: { label: "Critical", emoji: "🔴", color: "border-red-300 bg-red-600 text-white" },
-	P4: { label: "Critical", emoji: "🔴", color: "border-red-200 bg-red-50 text-red-800" },
-	P3: { label: "Warning", emoji: "🟠", color: "border-orange-200 bg-orange-50 text-orange-800" },
-	P2: { label: "Review", emoji: "🟡", color: "border-yellow-200 bg-yellow-50 text-yellow-800" },
-	P1: { label: "Info", emoji: "🔵", color: "border-blue-200 bg-blue-50 text-blue-700" },
-	P0: { label: "Info", emoji: "🔵", color: "border-slate-200 bg-slate-50 text-slate-600" }
-};
-
-// ─── Health score → plain English status ─────────────────────────────────────
-export const getHealthLabel = (score) => {
-	const n = Number(score);
-	if (n >= 90) return { label: "Excellent", color: "text-emerald-700", bar: "bg-emerald-500" };
-	if (n >= 80) return { label: "Good", color: "text-teal-700", bar: "bg-teal-500" };
-	if (n >= 70) return { label: "Fair", color: "text-amber-700", bar: "bg-amber-500" };
-	if (n >= 60) return { label: "Poor", color: "text-orange-700", bar: "bg-orange-500" };
-	if (n >= 50) return { label: "At Risk", color: "text-rose-700", bar: "bg-rose-500" };
-	return { label: "Critical", color: "text-red-700", bar: "bg-red-500" };
+export const severityMeta = {
+	CRITICAL: { label: "Critical", color: "bg-red-50 text-red-700 ring-1 ring-inset ring-red-200/50" },
+	HIGH: { label: "High", color: "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200/50" },
+	MEDIUM: { label: "Medium", color: "bg-yellow-50 text-yellow-700 ring-1 ring-inset ring-yellow-200/50" },
+	LOW: { label: "Low", color: "bg-slate-50 text-slate-700 ring-1 ring-inset ring-slate-200/50" },
+	HEALTHY: { label: "Healthy", color: "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200/50" }
 };
 
 // Legacy exports kept for any files that still import the old names
