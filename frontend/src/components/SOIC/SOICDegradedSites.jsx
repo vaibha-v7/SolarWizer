@@ -24,7 +24,7 @@ const getGapLabel = (ratio) => {
 	return { label: "Critically underproducing", color: "text-red-700" };
 };
 
-const SOICDegradedSites = ({ metrics = {} }) => {
+const SOICDegradedSites = ({ metrics = {}, onSiteClick }) => {
 	const list = Array.isArray(metrics.top_5_worst_performers) ? metrics.top_5_worst_performers : [];
 
 	return (
@@ -36,9 +36,34 @@ const SOICDegradedSites = ({ metrics = {} }) => {
 			</div>
 
 			<div className="p-4 sm:p-5">
-				{list.length ? (
-					<div className="space-y-3">
-						{list.map((site, index) => {
+				{list.length > 0 ? (
+					<div className="space-y-5">
+						<div className="rounded-2xl border-2 border-orange-400 bg-orange-50 p-4 shadow-sm relative overflow-hidden">
+							<div className="absolute -top-4 -right-4 p-4 text-orange-500/20 text-8xl pointer-events-none">⚠</div>
+							<div className="relative z-10">
+								<p className="text-xs font-bold uppercase tracking-[0.14em] text-orange-800">⚠ Most Critical Site</p>
+								<div className="mt-2 flex justify-between items-end">
+									<div>
+										<button 
+											onClick={() => onSiteClick && onSiteClick(list[0].user_id)}
+											className="text-xl font-bold text-slate-900 hover:text-orange-700 hover:underline text-left transition"
+										>
+											{siteLabel(list[0].user_name || list[0].name, list[0].user_id)}
+										</button>
+										{list[0].predicted_generation_kwh > 0 && list[0].actual_generation_kwh !== undefined && (
+											<p className="text-sm font-semibold text-orange-700 mt-1">
+												{Number(list[0].actual_generation_kwh).toFixed(1)} kW / {Number(list[0].predicted_generation_kwh).toFixed(1)} kW
+											</p>
+										)}
+									</div>
+									<div className="text-right">
+										<p className="text-3xl font-black text-orange-600">{formatRatio(list[0].performance_ratio)}</p>
+									</div>
+								</div>
+							</div>
+						</div>
+						<div className="space-y-3">
+							{list.map((site, index) => {
 							const ratio = safeNumber(site.performance_ratio);
 							const barWidth = Math.max(8, Math.min(100, ratio * 100));
 							const gapInfo = getGapLabel(ratio);
@@ -51,7 +76,12 @@ const SOICDegradedSites = ({ metrics = {} }) => {
 												{index + 1}
 											</span>
 											<div className="min-w-0">
-												<p className="truncate text-sm font-bold text-slate-900">{siteLabel(site.user_name, site.user_id)}</p>
+												<button 
+													onClick={() => onSiteClick && onSiteClick(site.user_id)}
+													className="block truncate text-sm font-bold text-slate-900 hover:text-orange-700 hover:underline transition text-left"
+												>
+													{siteLabel(site.user_name || site.name, site.user_id)}
+												</button>
 												<p className={`text-xs font-semibold ${gapInfo.color}`}>{gapInfo.label}</p>
 											</div>
 										</div>
@@ -66,6 +96,7 @@ const SOICDegradedSites = ({ metrics = {} }) => {
 								</div>
 							);
 						})}
+						</div>
 					</div>
 				) : (
 					<div className="py-8 text-center">

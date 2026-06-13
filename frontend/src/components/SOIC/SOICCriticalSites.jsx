@@ -3,12 +3,12 @@ import { getFriendlyMessage, getHealthLabel, priorityMeta } from "./alertCopy";
 const siteLabel = (name, userId) => {
 	const label = String(name || "").trim();
 	if (label) return label;
-	const id = String(userId || "unassigned");
-	if (id === "unassigned") return "Unknown Site";
-	return `Site ${id.slice(-6).toUpperCase()}`;
+	const id = String(userId || "unknown");
+	if (id === "unknown") return "Unknown Site";
+	return `Deleted Site (${id.slice(-6).toUpperCase()})`;
 };
 
-const SOICCriticalSites = ({ alerts = [], healthScores = [], fullPage = false }) => {
+const SOICCriticalSites = ({ alerts = [], healthScores = [], fullPage = false, onSiteClick }) => {
 	const criticalAlerts = alerts
 		.filter((item) => ["P4", "P5"].includes(item.priority))
 		.slice(0, fullPage ? alerts.length : 5);
@@ -46,7 +46,12 @@ const SOICCriticalSites = ({ alerts = [], healthScores = [], fullPage = false })
 									<div className="flex items-start justify-between gap-3">
 										<div className="min-w-0">
 											<div className="flex items-center gap-2">
-												<p className="text-sm font-bold text-slate-900">{siteLabel(alert.user_name || alert.site_name, alert.user_id)}</p>
+												<button 
+													onClick={() => onSiteClick && onSiteClick(alert.user_id)}
+													className="truncate text-sm font-bold text-slate-900 hover:text-rose-700 hover:underline transition text-left"
+												>
+													{siteLabel(alert.user_name || alert.site_name, alert.user_id)}
+												</button>
 												<span className={`rounded-full border px-2 py-0.5 text-xs font-black ${meta.color}`}>
 													{meta.label}
 												</span>
@@ -62,6 +67,9 @@ const SOICCriticalSites = ({ alerts = [], healthScores = [], fullPage = false })
 											{" — "}
 											<span className="text-slate-500">
 												Expected {(baselinePct * 100).toFixed(0)}%, getting {(actualPct * 100).toFixed(0)}%
+												{alert.predicted_generation_kwh > 0 && alert.actual_generation_kwh !== undefined && (
+													<span className="ml-1 font-medium">({Number(alert.actual_generation_kwh).toFixed(1)} kW / {Number(alert.predicted_generation_kwh).toFixed(1)} kW)</span>
+												)}
 											</span>
 										</div>
 									)}

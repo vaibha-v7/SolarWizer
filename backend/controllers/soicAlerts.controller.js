@@ -110,7 +110,8 @@ const getHealthScores = async (req, res) => {
 try {
 await hydrateSoicAnalytics();
 const scores = await SiteHealthScore.find().sort({ health_score: -1 }).lean();
-return res.status(200).json({ success: true, data: scores });
+	const scoresWithNames = await enrichWithUserName(scores);
+return res.status(200).json({ success: true, data: scoresWithNames });
 } catch (error) {
 return respondError(res, "Failed to fetch health scores", error);
 }
@@ -183,7 +184,8 @@ return row.performance_ratio < baseline * 0.98 && row.performance_ratio >= basel
 })
 .sort((left, right) => left.performance_ratio - right.performance_ratio)
 .slice(0, 50);
-return res.status(200).json({ success: true, data: watchlist });
+	const enrichedWatchlist = await enrichWithUserName(watchlist);
+return res.status(200).json({ success: true, data: enrichedWatchlist });
 } catch (error) {
 return respondError(res, "Failed to fetch watchlist", error);
 }
@@ -201,26 +203,38 @@ Alert.find().sort({ triggered_at: -1, created_at: -1 }).lean(),
 SiteHealthScore.find().sort({ health_score: -1 }).lean()
 ]);
 
-const [activeAlertsWithNames, alertsWithNames] = await Promise.all([
-enrichWithUserName(activeAlerts),
-enrichWithUserName(alerts)
-]);
+	const rows = await SiteDailyPerformance.find().sort({ user_id: 1, date: -1 }).lean();
+	const latestByUser = new Map();
+	for (const row of rows) {
+		const key = String(row.user_id);
+		if (!latestByUser.has(key)) latestByUser.set(key, row);
+	}
+	
+	const enrichAlertsWithKwh = (alertsList) => alertsList.map(a => {
+		const daily = latestByUser.get(String(a.user_id));
+		return {
+			...a,
+			actual_generation_kwh: daily?.actual_generation_kwh,
+			predicted_generation_kwh: daily?.predicted_generation_kwh
+		};
+	});
 
-const rows = await SiteDailyPerformance.find().sort({ user_id: 1, date: -1 }).lean();
-const latestByUser = new Map();
-for (const row of rows) {
-const key = String(row.user_id);
-if (!latestByUser.has(key)) latestByUser.set(key, row);
-}
-const watchlist = Array.from(latestByUser.values())
-		.filter((row) => row.data_source === 'daily_prediction_inverter')
-.filter((row) => {
-const baseline = Number(row.site_baseline_ratio || 0);
-if (!baseline) return row.performance_ratio >= 0.88 && row.performance_ratio < 0.95;
-return row.performance_ratio < baseline * 0.98 && row.performance_ratio >= baseline * 0.85;
-})
-.sort((left, right) => left.performance_ratio - right.performance_ratio)
-.slice(0, 50);
+	const [activeAlertsWithNames, alertsWithNames, enrichedHealthScores, enrichedWatchlist] = await Promise.all([
+		enrichWithUserName(enrichAlertsWithKwh(activeAlerts)),
+		enrichWithUserName(enrichAlertsWithKwh(alerts)),
+		enrichWithUserName(healthScores),
+		enrichWithUserName(
+			Array.from(latestByUser.values())
+				.filter((row) => row.data_source === 'daily_prediction_inverter')
+				.filter((row) => {
+					const baseline = Number(row.site_baseline_ratio || 0);
+					if (!baseline) return row.performance_ratio >= 0.88 && row.performance_ratio < 0.95;
+					return row.performance_ratio < baseline * 0.98 && row.performance_ratio >= baseline * 0.85;
+				})
+				.sort((left, right) => left.performance_ratio - right.performance_ratio)
+				.slice(0, 50)
+		)
+	]);
 
 return res.status(200).json({
 success: true,
@@ -228,8 +242,8 @@ data: {
 metrics,
 activeAlerts: activeAlertsWithNames,
 alerts: alertsWithNames,
-healthScores,
-watchlist
+healthScores: enrichedHealthScores,
+watchlist: enrichedWatchlist
 }
 });
 } catch (error) {

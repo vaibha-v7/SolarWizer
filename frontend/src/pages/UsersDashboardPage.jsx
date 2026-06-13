@@ -239,7 +239,7 @@ const UsersDashboardPage = () => {
 							className="w-full rounded-xl border border-amber-200 bg-gradient-to-r from-amber-50/80 to-orange-50/80 px-3 py-2.5 text-left text-sm font-semibold text-amber-800 transition hover:bg-amber-100/50"
 							onClick={() => navigate("/soic")}
 						>
-							🚨 Operations Center
+							🚨 Alerts Monitor System
 						</button>
 					</div>
 				</nav>
@@ -301,6 +301,13 @@ const UsersDashboardPage = () => {
 						}}
 					>
 						New Installation
+					</button>
+					<button
+						type="button"
+						className="rounded-xl border border-amber-200 bg-gradient-to-r from-amber-50/80 to-orange-50/80 px-4 py-2.5 text-sm font-semibold text-amber-800 shadow transition hover:-translate-y-0.5 hover:shadow-lg sm:col-span-2"
+						onClick={() => navigate("/soic")}
+					>
+						🚨 Alerts Monitor System
 					</button>
 				</div>
 			</div>
