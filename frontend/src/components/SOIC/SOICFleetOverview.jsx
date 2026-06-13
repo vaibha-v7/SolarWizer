@@ -1,4 +1,12 @@
-import { getHealthLabel } from "./alertCopy";
+import { getHealthLabel, getFriendlyAlertType } from "./alertCopy";
+
+const siteLabel = (name, userId) => {
+	const label = String(name || "").trim();
+	if (label) return label;
+	const id = String(userId || "unknown");
+	if (id === "unknown") return "Unknown Site";
+	return `Deleted Site (${id.slice(-6).toUpperCase()})`;
+};
 
 const safeNumber = (value, fallback = 0) => {
 	const parsed = Number(value);
@@ -30,7 +38,7 @@ const getReliabilityInsight = (avgPR, realTimeSiteCount) => {
 	return `Connected sites are at ${pct}% of expected output — investigate low-performing sites.`;
 };
 
-const SOICFleetOverview = ({ metrics = {}, healthScores = [], activeAlerts = [], watchlist = [] }) => {
+const SOICFleetOverview = ({ metrics = {}, healthScores = [], activeAlerts = [] }) => {
 	const totalSites = safeNumber(metrics.total_sites);
 	const healthySites = safeNumber(metrics.healthy_sites);
 	const warningSites = safeNumber(metrics.warning_sites);
@@ -45,6 +53,22 @@ const SOICFleetOverview = ({ metrics = {}, healthScores = [], activeAlerts = [],
 	const realTimeSiteCount = Array.isArray(metrics.top_5_best_performers)
 		? metrics.top_5_best_performers.length
 		: 0;
+
+	const healthySitesList = Array.isArray(metrics.top_5_best_performers) ? metrics.top_5_best_performers : [];
+	const needsAttentionList = Array.isArray(metrics.top_5_worst_performers) ? metrics.top_5_worst_performers : [];
+	
+	const groupedAlerts = activeAlerts.reduce((acc, alert) => {
+		const key = alert.user_id || "unassigned";
+		if (!acc[key]) acc[key] = { userId: key, userName: alert.user_name, siteName: alert.site_name, alerts: [] };
+		acc[key].alerts.push(alert);
+		return acc;
+	}, {});
+	
+	const connectivityIssuesList = Object.values(groupedAlerts).filter(group => 
+		group.alerts.some(a => a.alert_type?.includes("NO_REALTIME_DATA") || a.title?.includes("No real-time data"))
+	);
+
+	const todaysPriorities = Object.values(groupedAlerts).slice(0, 3);
 
 	const cards = [
 		{
@@ -132,6 +156,58 @@ const SOICFleetOverview = ({ metrics = {}, healthScores = [], activeAlerts = [],
 						<p className="mt-2 text-xs font-semibold text-slate-500">{card.helper}</p>
 					</div>
 				))}
+			</div>
+
+			{/* Fleet Status Board */}
+			<div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+				<div className="rounded-2xl border border-emerald-200/80 bg-emerald-50/40 p-4 shadow-sm">
+					<p className="text-xs font-bold text-emerald-800">🟢 HEALTHY SITES ({healthySitesList.length})</p>
+					<div className="mt-3 space-y-3">
+						{healthySitesList.map((site, i) => (
+							<div key={site.user_id || i} className="rounded border border-emerald-100 bg-white p-2.5 text-sm">
+								<p className="font-bold text-slate-900">{siteLabel(site.user_name || site.name, site.user_id)}</p>
+								<div className="mt-1 flex items-center justify-between text-xs">
+									<span className="font-medium text-emerald-700">
+										{Number(site.actual_generation_kwh || 0).toFixed(1)} kW / {Number(site.predicted_generation_kwh || 0).toFixed(1)} kW
+									</span>
+									<span className="font-bold text-slate-600">{formatRatio(site.performance_ratio)} of target</span>
+								</div>
+							</div>
+						))}
+						{!healthySitesList.length && <p className="text-xs text-slate-500">No healthy sites data.</p>}
+					</div>
+				</div>
+
+				<div className="rounded-2xl border border-amber-200/80 bg-amber-50/40 p-4 shadow-sm">
+					<p className="text-xs font-bold text-amber-800">🟠 NEEDS ATTENTION ({needsAttentionList.length})</p>
+					<div className="mt-3 space-y-3">
+						{needsAttentionList.map((site, i) => (
+							<div key={site.user_id || i} className="rounded border border-amber-100 bg-white p-2.5 text-sm">
+								<p className="font-bold text-slate-900">{siteLabel(site.user_name || site.name, site.user_id)}</p>
+								<div className="mt-1 flex items-center justify-between text-xs">
+									<span className="font-medium text-amber-700">
+										{Number(site.actual_generation_kwh || 0).toFixed(1)} kW / {Number(site.predicted_generation_kwh || 0).toFixed(1)} kW
+									</span>
+									<span className="font-bold text-slate-600">{formatRatio(site.performance_ratio)} of target</span>
+								</div>
+							</div>
+						))}
+						{!needsAttentionList.length && <p className="text-xs text-slate-500">No sites need attention.</p>}
+					</div>
+				</div>
+
+				<div className="rounded-2xl border border-blue-200/80 bg-blue-50/40 p-4 shadow-sm">
+					<p className="text-xs font-bold text-blue-800">🔵 CONNECTIVITY ISSUES ({connectivityIssuesList.length})</p>
+					<div className="mt-3 space-y-3">
+						{connectivityIssuesList.map((group, i) => (
+							<div key={group.userId || i} className="rounded border border-blue-100 bg-white p-2.5 text-sm">
+								<p className="font-bold text-slate-900">{siteLabel(group.userName || group.siteName, group.userId)}</p>
+								<p className="mt-0.5 text-xs font-medium text-blue-700">No live telemetry</p>
+							</div>
+						))}
+						{!connectivityIssuesList.length && <p className="text-xs text-slate-500">No connectivity issues.</p>}
+					</div>
+				</div>
 			</div>
 
 			<div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
@@ -247,6 +323,40 @@ const SOICFleetOverview = ({ metrics = {}, healthScores = [], activeAlerts = [],
 								<p className="mt-1 text-xs text-slate-400">of {totalSites} total</p>
 							</div>
 						</div>
+					</div>
+				</div>
+				
+				{/* Today's Priorities */}
+				<div className="rounded-2xl border border-rose-200/80 bg-rose-50/30 p-5 shadow-sm">
+					<p className="text-xs font-bold uppercase tracking-[0.14em] text-rose-800">Today's Priorities</p>
+					<h2 className="mt-1 text-lg font-bold text-slate-900">What to check first</h2>
+					<div className="mt-4 space-y-3">
+						{todaysPriorities.map((group, idx) => {
+							const topAlert = group.alerts[0];
+							const isConnectivity = topAlert.alert_type?.includes("NO_REALTIME_DATA") || topAlert.title?.includes("No real-time data");
+							return (
+								<div key={group.userId} className="rounded-xl border border-rose-100 bg-white p-3 shadow-sm">
+									<div className="flex items-center gap-2">
+										<span className="text-sm font-black text-rose-700">#{idx + 1}</span>
+										<p className="font-bold text-slate-900">{siteLabel(group.userName || group.siteName, group.userId)}</p>
+									</div>
+									<p className="mt-1 text-xs font-semibold text-slate-600">
+										{getFriendlyAlertType(topAlert.alert_type || topAlert.title || "")}
+									</p>
+									<div className="mt-1 flex items-center justify-between text-xs">
+										{isConnectivity ? (
+											<span className="font-medium text-slate-500">Awaiting inverter connection</span>
+										) : (
+											<span className="font-bold text-rose-600">
+												{topAlert.actual_generation_kwh !== undefined ? `${Number(topAlert.actual_generation_kwh).toFixed(1)} kW / ${Number(topAlert.predicted_generation_kwh).toFixed(1)} kW` : ''}
+											</span>
+										)}
+										<span className="font-medium text-slate-500">{group.alerts.length} active alert{group.alerts.length !== 1 && 's'}</span>
+									</div>
+								</div>
+							);
+						})}
+						{!todaysPriorities.length && <p className="text-sm text-slate-500 mt-2">No urgent priorities right now.</p>}
 					</div>
 				</div>
 			</div>

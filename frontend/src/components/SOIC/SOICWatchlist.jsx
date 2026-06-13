@@ -22,13 +22,14 @@ const formatDate = (value) => {
 	return date.toLocaleDateString([], { month: "short", day: "numeric" });
 };
 
-const siteLabel = (value) => {
+const siteLabel = (value, fallbackName) => {
+	if (fallbackName && fallbackName.trim()) return fallbackName.trim();
 	const id = String(value || "unknown");
 	if (id === "unknown") return "Site Unknown";
-	return `Site ${id.slice(-6).toUpperCase()}`;
+	return `Deleted Site (${id.slice(-6).toUpperCase()})`;
 };
 
-const SOICWatchlist = ({ items = [], fullPage = false }) => {
+const SOICWatchlist = ({ items = [], fullPage = false, onSiteClick }) => {
 	const visibleItems = items.slice(0, fullPage ? items.length : 6);
 
 	return (
@@ -54,10 +55,13 @@ const SOICWatchlist = ({ items = [], fullPage = false }) => {
 							return (
 								<div key={item._id || `${item.user_id}-${item.date}-${index}`} className="rounded-xl border border-amber-100 bg-amber-50/45 p-3 transition hover:border-amber-200 hover:bg-amber-50">
 									<div className="flex items-start justify-between gap-3">
-										<div className="min-w-0">
-											<p className="truncate text-sm font-bold text-slate-900">{siteLabel(item.user_id)}</p>
+										<button 
+											onClick={() => onSiteClick && onSiteClick(item.user_id)}
+											className="min-w-0 text-left transition hover:opacity-70"
+										>
+											<p className="truncate text-sm font-bold text-slate-900">{siteLabel(item.user_id, item.user_name)}</p>
 											<p className="mt-1 text-xs font-semibold text-slate-500">{formatDate(item.date)}</p>
-										</div>
+										</button>
 										<div className="text-right">
 											<p className="text-lg font-bold text-amber-700">{formatRatio(ratio)}</p>
 											<p className="text-xs font-semibold text-slate-500">PR</p>
@@ -98,11 +102,12 @@ const SOICWatchlist = ({ items = [], fullPage = false }) => {
 					</div>
 				) : (
 					<div className="py-8 text-center">
-						<div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-xs font-black text-slate-500">
-							PR
+						<p className="text-sm font-bold text-slate-700">No watchlist sites today.</p>
+						<div className="mt-4 inline-flex flex-col items-start rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-left">
+							<p className="text-xs font-bold text-slate-600 mb-1">Thresholds:</p>
+							<p className="text-[11px] font-semibold text-amber-700">Warning = 80%</p>
+							<p className="text-[11px] font-semibold text-emerald-700 mt-0.5">Healthy = 95%</p>
 						</div>
-						<p className="mt-3 text-sm font-bold text-slate-700">No watchlist items</p>
-						<p className="mt-1 text-xs text-slate-500">Sites between warning and healthy thresholds will appear here.</p>
 					</div>
 				)}
 			</div>

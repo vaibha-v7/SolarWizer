@@ -9,6 +9,7 @@ const DEFAULT_FORM = {
 	name: "",
 	email: "",
 	phoneNumber: "",
+	siteId: "",
 	inverterSerialNumber: "",
 	latitude: "",
 	longitude: "",
@@ -105,6 +106,7 @@ const UsersDashboardPage = () => {
 			name: user.name,
 			email: user.email,
 			phoneNumber: user.phoneNumber,
+			siteId: user.siteId ?? "",
 			inverterSerialNumber: user.inverterSerialNumber ?? "",
 			latitude: String(user.location?.latitude ?? ""),
 			longitude: String(user.location?.longitude ?? ""),
@@ -134,6 +136,7 @@ const UsersDashboardPage = () => {
 				name: formData.name.trim(),
 				email: formData.email.trim(),
 				phoneNumber: formData.phoneNumber.trim(),
+				siteId: formData.siteId.trim(),
 				inverterSerialNumber: formData.inverterSerialNumber.trim(),
 				location: {
 					latitude: Number(formData.latitude),
@@ -183,7 +186,7 @@ const UsersDashboardPage = () => {
 
 		return users.filter((user) => {
 			const location = `${user.location?.latitude ?? ""}, ${user.location?.longitude ?? ""}`;
-			return [user.name, user.email, user.phoneNumber, user.inverterSerialNumber, String(user.systemCapacity), location]
+			return [user.name, user.email, user.phoneNumber, user.siteId, user.inverterSerialNumber, String(user.systemCapacity), location]
 				.some((value) => String(value ?? "").toLowerCase().includes(query));
 		});
 	}, [searchText, users]);
@@ -236,7 +239,7 @@ const UsersDashboardPage = () => {
 							className="w-full rounded-xl border border-amber-200 bg-gradient-to-r from-amber-50/80 to-orange-50/80 px-3 py-2.5 text-left text-sm font-semibold text-amber-800 transition hover:bg-amber-100/50"
 							onClick={() => navigate("/soic")}
 						>
-							🚨 Operations Center
+							🚨 Alerts Monitor System
 						</button>
 					</div>
 				</nav>
@@ -298,6 +301,13 @@ const UsersDashboardPage = () => {
 						}}
 					>
 						New Installation
+					</button>
+					<button
+						type="button"
+						className="rounded-xl border border-amber-200 bg-gradient-to-r from-amber-50/80 to-orange-50/80 px-4 py-2.5 text-sm font-semibold text-amber-800 shadow transition hover:-translate-y-0.5 hover:shadow-lg sm:col-span-2"
+						onClick={() => navigate("/soic")}
+					>
+						🚨 Alerts Monitor System
 					</button>
 				</div>
 			</div>
@@ -396,7 +406,7 @@ const UsersDashboardPage = () => {
 									{editingUserId ? "Edit User" : "Add New User"}
 								</h3>
 								<p className="mt-1 text-sm text-slate-600">
-									{editingUserId ? "Update user information and settings." : "Fill in all required fields to create a user profile."}
+									{editingUserId ? "Update user information and settings." : "Fill in the core fields now; site id and inverter serial can be added later from edit."}
 								</p>
 							</div>
 							<button
@@ -412,7 +422,8 @@ const UsersDashboardPage = () => {
 							<input className="rounded-lg border border-slate-300 px-3 py-2 text-sm" name="name" value={formData.name} onChange={handleFormFieldChange} placeholder="Full name" required />
 							<input className="rounded-lg border border-slate-300 px-3 py-2 text-sm" name="email" type="email" value={formData.email} onChange={handleFormFieldChange} placeholder="Email" required />
 							<input className="rounded-lg border border-slate-300 px-3 py-2 text-sm" name="phoneNumber" value={formData.phoneNumber} onChange={handleFormFieldChange} placeholder="Phone number" required />
-							<input className="rounded-lg border border-slate-300 px-3 py-2 text-sm" name="inverterSerialNumber" value={formData.inverterSerialNumber} onChange={handleFormFieldChange} placeholder="Inverter Serial Number" />
+							<input className="rounded-lg border border-slate-300 px-3 py-2 text-sm" name="siteId" value={formData.siteId} onChange={handleFormFieldChange} placeholder="Site ID (optional)" />
+							<input className="rounded-lg border border-slate-300 px-3 py-2 text-sm" name="inverterSerialNumber" value={formData.inverterSerialNumber} onChange={handleFormFieldChange} placeholder="Inverter Serial Number (optional)" />
 							<input className="rounded-lg border border-slate-300 px-3 py-2 text-sm" name="systemCapacity" type="number" step="0.01" value={formData.systemCapacity} onChange={handleFormFieldChange} placeholder="System Capacity (kW)" required />
 							<input className="rounded-lg border border-slate-300 px-3 py-2 text-sm" name="numberOfPanels" type="number" step="1" value={formData.numberOfPanels} onChange={handleFormFieldChange} placeholder="Number of Panels" required />
 							<input className="rounded-lg border border-slate-300 px-3 py-2 text-sm" name="latitude" type="number" step="0.0001" value={formData.latitude} onChange={handleFormFieldChange} placeholder="Latitude" required />

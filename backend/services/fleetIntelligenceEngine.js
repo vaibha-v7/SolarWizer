@@ -64,7 +64,8 @@ async function calculateFleetMetrics() {
 
 	const byInverterType = users.reduce((acc, user) => {
 		const serial = String(user.inverterSerialNumber || "").toLowerCase();
-		const type = serial.startsWith("fox") ? "foxes" : serial ? "solaredge" : "not_configured";
+		const siteId = String(user.siteId || "").trim();
+		const type = serial.startsWith("fox") ? "foxes" : serial ? "solaredge" : siteId ? "solaredge_site" : "not_configured";
 		acc[type] = (acc[type] || 0) + 1;
 		return acc;
 	}, {});
@@ -93,7 +94,9 @@ async function calculateFleetMetrics() {
 			performance_ratio: item.performance_ratio,
 			baseline_drift_percent: item.baseline_drift_percent,
 			data_source: item.data_source,
-			analytics_confidence: item.analytics_confidence
+			analytics_confidence: item.analytics_confidence,
+			actual_generation_kwh: item.actual_generation_kwh,
+			predicted_generation_kwh: item.predicted_generation_kwh
 		}))
 		.sort((a, b) => b.performance_ratio - a.performance_ratio);
 	const fleetAverage = average(performanceRatios);

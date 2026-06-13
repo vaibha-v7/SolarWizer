@@ -1,0 +1,806 @@
+﻿diff --git a/frontend/src/components/SOIC/SOICActiveAlerts.jsx b/frontend/src/components/SOIC/SOICActiveAlerts.jsx
+index 973240d..c716ce2 100644
+--- a/frontend/src/components/SOIC/SOICActiveAlerts.jsx
++++ b/frontend/src/components/SOIC/SOICActiveAlerts.jsx
+@@ -1,16 +1,32 @@
++import { useState } from "react";
+ import { getFriendlyAlertType, getFriendlyMessage, getFriendlyRecommendation, priorityMeta } from "./alertCopy";
+ 
+ const priorityRank = { P5: 5, P4: 4, P3: 3, P2: 2, P1: 1, P0: 0 };
+ 
+-const formatDate = (value) => {
++const formatAge = (value) => {
+ 	if (!value) return "";
+ 	const date = new Date(value);
+ 	if (Number.isNaN(date.getTime())) return "";
+-	const today = new Date();
+-	const diffDays = Math.floor((today - date) / 86400000);
+-	if (diffDays === 0) return "Today";
+-	if (diffDays === 1) return "Yesterday";
+-	return `${diffDays} days ago`;
++	
++	const diffMs = new Date() - date;
++	if (diffMs < 0) return "Just now";
++	
++	const diffMins = Math.floor(diffMs / 60000);
++	const diffHrs = Math.floor(diffMins / 60);
++	const diffDays = Math.floor(diffHrs / 24);
++	
++	if (diffDays > 0) {
++		const remHrs = diffHrs % 24;
++		return `Active for ${diffDays}d ${remHrs}h`;
++	}
++	if (diffHrs > 0) {
++		const remMins = diffMins % 60;
++		return `Active for ${diffHrs}h ${remMins}m`;
++	}
++	if (diffMins > 0) {
++		return `Active for ${diffMins}m`;
++	}
++	return "Active for < 1m";
+ };
+ 
+ const siteLabel = (name, userId) => {
+@@ -18,7 +34,7 @@ const siteLabel = (name, userId) => {
+ 	if (label) return label;
+ 	const id = String(userId || "unassigned");
+ 	if (id === "unassigned") return "Unknown Site";
+-	return `Site ${id.slice(-6).toUpperCase()}`;
++	return `Deleted Site (${id.slice(-6).toUpperCase()})`;
+ };
+ 
+ const EmptyAlerts = () => (
+@@ -31,7 +47,7 @@ const EmptyAlerts = () => (
+ 	</div>
+ );
+ 
+-const AlertCard = ({ alert, showDetails }) => {
++const AlertItem = ({ alert, showDetails, onResolve }) => {
+ 	const meta = priorityMeta[alert.priority] || priorityMeta.P0;
+ 	const alertType = getFriendlyAlertType(alert.alert_type || alert.title || "");
+ 	const message = getFriendlyMessage(alert.short_message || alert.title || "");
+@@ -41,39 +57,71 @@ const AlertCard = ({ alert, showDetails }) => {
+ 			? alert.maintenance_recommendations[0]
+ 			: ""
+ 	);
+-	const site = siteLabel(alert.user_name || alert.site_name, alert.user_id);
+-	const when = formatDate(alert.triggered_at || alert.created_at);
++	const when = formatAge(alert.triggered_at || alert.created_at);
+ 
+ 	return (
+-		<div className="group border-b border-slate-100 px-4 py-4 transition hover:bg-amber-50/30 sm:px-5">
++		<div className="mt-3 rounded-lg border border-slate-100 bg-white p-3 shadow-sm">
+ 			<div className="flex items-start gap-3">
+-				{/* Urgency badge */}
+ 				<div className="flex flex-col items-center gap-1 pt-0.5">
+-					<span className={`inline-flex min-w-[3.5rem] justify-center rounded-full border px-2.5 py-1 text-xs font-black ${meta.color}`}>
++					<span className={`inline-flex min-w-[3.5rem] justify-center rounded-full border px-2.5 py-1 text-[10px] font-black ${meta.color}`}>
+ 						{meta.label}
+ 					</span>
+ 				</div>
+-
+-				{/* Content */}
+ 				<div className="min-w-0 flex-1">
+ 					<div className="flex flex-wrap items-center gap-2">
+-						<p className="text-sm font-bold text-slate-900">{site}</p>
+-						<span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-600">
++						<span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-600">
+ 							{alertType}
+ 						</span>
+-						{when && <span className="ml-auto text-xs text-slate-400">{when}</span>}
++						{when && <span className="ml-auto text-xs font-medium text-slate-400">{when}</span>}
+ 					</div>
+ 
+-					<p className="mt-1 text-sm text-slate-700">{message}</p>
++					<p className="mt-1.5 text-sm font-semibold text-slate-800">{message}</p>
+ 
+ 					{showDetails && description && description !== message && (
+-						<p className="mt-1 text-xs text-slate-500">{description}</p>
++						<p className="mt-1 text-xs text-slate-600">{description}</p>
++					)}
++
++					{showDetails && (alert.predicted_generation_kwh > 0) && alert.actual_generation_kwh !== undefined && (
++						<div className="mt-2 grid grid-cols-2 gap-2 rounded bg-slate-50 p-2 text-xs border border-slate-100">
++							<div>
++								<p className="text-slate-500 font-medium">Expected Output</p>
++								<p className="font-bold text-slate-700">{Number(alert.predicted_generation_kwh).toFixed(1)} kW</p>
++							</div>
++							<div>
++								<p className="text-slate-500 font-medium">Actual Output</p>
++								<p className="font-bold text-slate-700">{Number(alert.actual_generation_kwh).toFixed(1)} kW</p>
++							</div>
++							<div>
++								<p className="text-slate-500 font-medium">Deviation</p>
++								<p className="font-bold text-rose-600">
++									{(((Number(alert.actual_generation_kwh) - Number(alert.predicted_generation_kwh)) / Number(alert.predicted_generation_kwh)) * 100).toFixed(0)}%
++								</p>
++							</div>
++							<div>
++								<p className="text-slate-500 font-medium">Cause</p>
++								<p className="font-bold text-slate-700">{alertType}</p>
++							</div>
++						</div>
+ 					)}
+ 
+ 					{showDetails && recommendation && (
+-						<div className="mt-2 flex items-start gap-1.5 rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-2">
+-							<span className="text-sm">≡ƒÆí</span>
+-							<p className="text-xs font-semibold text-emerald-800">{recommendation}</p>
++						<div className="mt-3 flex items-start gap-2 rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-2.5">
++							<span className="text-base leading-none mt-0.5">≡ƒÆí</span>
++							<div>
++								<p className="text-[10px] font-bold uppercase tracking-wider text-emerald-600">Recommended Action</p>
++								<p className="mt-0.5 text-xs font-semibold text-emerald-900">{recommendation}</p>
++							</div>
++						</div>
++					)}
++					{showDetails && onResolve && (
++						<div className="mt-3 flex justify-end">
++							<button
++								type="button"
++								className="rounded-full border border-emerald-200 bg-emerald-50 px-4 py-1.5 text-xs font-bold text-emerald-700 transition hover:bg-emerald-100 hover:border-emerald-300"
++								onClick={() => onResolve(alert._id, "Manual Resolution")}
++							>
++								Resolve Alert
++							</button>
+ 						</div>
+ 					)}
+ 				</div>
+@@ -82,61 +130,151 @@ const AlertCard = ({ alert, showDetails }) => {
+ 	);
+ };
+ 
+-const SOICActiveAlerts = ({ alerts = [], fullPage = false }) => {
+-	const sorted = [...alerts]
++const SiteAlertGroup = ({ userId, userName, siteName, alerts, showDetails, onResolve, onSiteClick }) => {
++	const [expanded, setExpanded] = useState(false);
++	const site = siteLabel(userName || siteName, userId);
++	
++	const highestPriority = alerts.reduce((max, a) => {
++		const currentRank = priorityRank[a.priority] ?? -1;
++		return currentRank > priorityRank[max] ? a.priority : max;
++	}, alerts[0].priority);
++	const meta = priorityMeta[highestPriority] || priorityMeta.P0;
++
++	return (
++		<div className="group border-b border-slate-100 px-4 py-4 transition hover:bg-slate-50/50 sm:px-5">
++			<div className="flex w-full items-center justify-between text-left">
++				<div className="flex items-center gap-3">
++					<div className={`flex h-2 w-2 rounded-full ${meta.color.replace('text-', 'bg-').split(' ')[0]}`} />
++					<div>
++						<button 
++							onClick={() => onSiteClick && onSiteClick(userId)}
++							className="text-sm font-bold text-slate-900 hover:text-amber-700 hover:underline text-left transition"
++						>
++							{site}
++						</button>
++						<p className="text-xs font-medium text-slate-500 mt-0.5">
++							{alerts.length} Active {alerts.length === 1 ? 'Alert' : 'Alerts'}
++						</p>
++					</div>
++				</div>
++				<button onClick={() => setExpanded(!expanded)} className="text-slate-400 p-2 hover:bg-slate-100 rounded">
++					{expanded ? "Γû▓" : "Γû╝"}
++				</button>
++			</div>
++			
++			{expanded && (
++				<div className="mt-2 pl-5">
++					{alerts.map(a => (
++						<AlertItem 
++							key={a._id || `${a.user_id}-${a.priority}-${a.alert_type}`} 
++							alert={a} 
++							showDetails={showDetails} 
++							onResolve={onResolve} 
++						/>
++					))}
++				</div>
++			)}
++		</div>
++	);
++};
++
++const SOICActiveAlerts = ({ alerts = [], fullPage = false, onResolve, onSiteClick }) => {
++	const [activeFilter, setActiveFilter] = useState("All");
++
++	const filteredAlerts = alerts.filter(a => {
++		if (activeFilter === "All") return true;
++		if (activeFilter === "Critical") return ["P4", "P5"].includes(a.priority);
++		if (activeFilter === "Warning") return a.priority === "P3";
++		if (activeFilter === "Review") return a.priority === "P2";
++		if (activeFilter === "Info") return ["P0", "P1"].includes(a.priority) && !a.alert_type?.includes("NO_REALTIME_DATA");
++		if (activeFilter === "Connectivity") return a.alert_type?.includes("NO_REALTIME_DATA") || a.title?.includes("No real-time data");
++		return true;
++	});
++
++	const sorted = [...filteredAlerts]
+ 		.sort((a, b) => (priorityRank[b.priority] ?? -1) - (priorityRank[a.priority] ?? -1));
+ 
+-	const urgent = sorted.filter((a) => ["P4", "P5"].includes(a.priority));
+-	const other = sorted.filter((a) => !["P4", "P5"].includes(a.priority));
+-	const visibleAlerts = fullPage ? sorted : sorted.slice(0, 6);
++	// Group by site
++	const grouped = sorted.reduce((acc, alert) => {
++		const key = alert.user_id || "unassigned";
++		if (!acc[key]) acc[key] = { userId: key, userName: alert.user_name, siteName: alert.site_name, alerts: [] };
++		acc[key].alerts.push(alert);
++		return acc;
++	}, {});
++
++	const siteGroups = Object.values(grouped);
++	const visibleGroups = fullPage ? siteGroups : siteGroups.slice(0, 5);
++
++	const urgentCount = alerts.filter((a) => ["P4", "P5"].includes(a.priority)).length;
+ 
+ 	return (
+-		<section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white/90 shadow-sm">
+-			<div className="flex flex-col gap-2 border-b border-slate-200/70 bg-slate-50/70 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+-				<div>
+-					<p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">What Needs Attention</p>
+-					<h2 className="mt-1 text-lg font-bold text-slate-900">Active Alerts</h2>
+-				</div>
+-				<div className="flex items-center gap-2">
+-					{urgent.length > 0 && (
+-						<span className="rounded-full bg-rose-100 px-3 py-1 text-xs font-bold text-rose-700">
+-							≡ƒÜ¿ {urgent.length} urgent
++		<section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white/90 shadow-sm flex flex-col h-full">
++			<div className="flex flex-col gap-3 border-b border-slate-200/70 bg-slate-50/70 px-4 py-3 sm:px-5">
++				<div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
++					<div>
++						<p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">What Needs Attention</p>
++						<h2 className="mt-1 text-lg font-bold text-slate-900">Active Alerts</h2>
++					</div>
++					<div className="flex items-center gap-2">
++						{urgentCount > 0 && (
++							<span className="rounded-full bg-rose-100 px-3 py-1 text-xs font-bold text-rose-700">
++								≡ƒÜ¿ {urgentCount} urgent
++							</span>
++						)}
++						<span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">
++							{alerts.length} total
+ 						</span>
+-					)}
+-					<span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">
+-						{alerts.length} total
+-					</span>
++					</div>
++				</div>
++				
++				<div className="flex overflow-x-auto pb-1 gap-2 mt-1 scrollbar-hide">
++					{["All", "Critical", "Warning", "Review", "Info", "Connectivity"].map(f => (
++						<button
++							key={f}
++							onClick={() => setActiveFilter(f)}
++							className={`shrink-0 rounded-full px-3 py-1 text-xs font-bold transition ${
++								activeFilter === f 
++									? "bg-slate-800 text-white" 
++									: "bg-white text-slate-600 border border-slate-200 hover:bg-slate-100"
++							}`}
++						>
++							{f}
++						</button>
++					))}
+ 				</div>
+ 			</div>
+ 
+-			{visibleAlerts.length ? (
+-				<div>
+-					{/* Urgent alerts highlighted at top */}
+-					{!fullPage && urgent.length > 0 && (
+-						<div className="border-b border-rose-100 bg-rose-50/40 px-4 py-2 sm:px-5">
+-							<p className="text-xs font-bold text-rose-600">≡ƒÜ¿ Requires urgent action</p>
+-						</div>
+-					)}
++			<div className="flex-1 overflow-auto">
++				{visibleGroups.length ? (
++					<div>
++						{!fullPage && urgentCount > 0 && (
++							<div className="border-b border-rose-100 bg-rose-50/40 px-4 py-2 sm:px-5">
++								<p className="text-xs font-bold text-rose-600">≡ƒÜ¿ Requires urgent action</p>
++							</div>
++						)}
+ 
+-					{visibleAlerts.map((alert) => (
+-						<AlertCard
+-							key={alert._id || `${alert.user_id}-${alert.priority}-${alert.alert_type}`}
+-							alert={alert}
+-							showDetails={fullPage}
+-						/>
+-					))}
++						{visibleGroups.map((group) => (
++							<SiteAlertGroup
++								key={group.userId}
++								{...group}
++								showDetails={fullPage}
++								onResolve={onResolve}
++								onSiteClick={onSiteClick}
++							/>
++						))}
+ 
+-					{!fullPage && alerts.length > 6 && (
+-						<div className="border-t border-slate-100 bg-slate-50/60 px-5 py-3 text-center">
+-							<p className="text-xs font-semibold text-slate-500">
+-								+{alerts.length - 6} more alerts ΓÇö go to the Alerts tab to see all
+-							</p>
+-						</div>
+-					)}
+-				</div>
+-			) : (
+-				<EmptyAlerts />
+-			)}
++						{!fullPage && siteGroups.length > 5 && (
++							<div className="border-t border-slate-100 bg-slate-50/60 px-5 py-3 text-center">
++								<p className="text-xs font-semibold text-slate-500">
++									+{siteGroups.length - 5} more sites ΓÇö go to the Alerts tab to see all
++								</p>
++							</div>
++						)}
++					</div>
++				) : (
++					<EmptyAlerts />
++				)}
++			</div>
+ 		</section>
+ 	);
+ };
+diff --git a/frontend/src/components/SOIC/SOICBestPerformers.jsx b/frontend/src/components/SOIC/SOICBestPerformers.jsx
+index ac7f6d8..c1882e8 100644
+--- a/frontend/src/components/SOIC/SOICBestPerformers.jsx
++++ b/frontend/src/components/SOIC/SOICBestPerformers.jsx
+@@ -13,7 +13,7 @@ const siteLabel = (name, userId) => {
+ 	if (label) return label;
+ 	const id = String(userId || "unknown");
+ 	if (id === "unknown") return "Unknown Site";
+-	return `Site ${id.slice(-6).toUpperCase()}`;
++	return `Deleted Site (${id.slice(-6).toUpperCase()})`;
+ };
+ 
+ const getRatingLabel = (ratio) => {
+@@ -23,7 +23,7 @@ const getRatingLabel = (ratio) => {
+ 	return { label: "Below average", color: "text-orange-600" };
+ };
+ 
+-const SOICBestPerformers = ({ metrics = {} }) => {
++const SOICBestPerformers = ({ metrics = {}, onSiteClick }) => {
+ 	const list = Array.isArray(metrics.top_5_best_performers) ? metrics.top_5_best_performers : [];
+ 
+ 	return (
+@@ -50,11 +50,23 @@ const SOICBestPerformers = ({ metrics = {} }) => {
+ 												{index + 1}
+ 											</span>
+ 											<div className="min-w-0">
+-												<p className="truncate text-sm font-bold text-slate-900">{siteLabel(site.user_name, site.user_id)}</p>
++												<button 
++													onClick={() => onSiteClick && onSiteClick(site.user_id)}
++													className="block truncate text-sm font-bold text-slate-900 hover:text-emerald-700 hover:underline transition text-left"
++												>
++													{siteLabel(site.user_name || site.name, site.user_id)}
++												</button>
+ 												<p className={`text-xs font-semibold ${rating.color}`}>{rating.label} ΓÇö producing {formatRatio(ratio)} of target</p>
+ 											</div>
+ 										</div>
+-										<p className="shrink-0 text-lg font-bold text-emerald-700">{formatRatio(ratio)}</p>
++										<div className="flex flex-col items-end shrink-0">
++											<p className="text-lg font-bold text-emerald-700">{formatRatio(ratio)}</p>
++											{site.predicted_generation_kwh > 0 && site.actual_generation_kwh !== undefined && (
++												<p className="text-[10px] font-semibold text-emerald-600/80 mt-0.5">
++													{Number(site.actual_generation_kwh).toFixed(1)} kW / {Number(site.predicted_generation_kwh).toFixed(1)} kW
++												</p>
++											)}
++										</div>
+ 									</div>
+ 									<div className="mt-3 h-2 overflow-hidden rounded-full bg-white">
+ 										<div className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-400" style={{ width: `${barWidth}%` }} />
+diff --git a/frontend/src/components/SOIC/SOICCriticalSites.jsx b/frontend/src/components/SOIC/SOICCriticalSites.jsx
+index 1a0f31a..020a07c 100644
+--- a/frontend/src/components/SOIC/SOICCriticalSites.jsx
++++ b/frontend/src/components/SOIC/SOICCriticalSites.jsx
+@@ -3,12 +3,12 @@ import { getFriendlyMessage, getHealthLabel, priorityMeta } from "./alertCopy";
+ const siteLabel = (name, userId) => {
+ 	const label = String(name || "").trim();
+ 	if (label) return label;
+-	const id = String(userId || "unassigned");
+-	if (id === "unassigned") return "Unknown Site";
+-	return `Site ${id.slice(-6).toUpperCase()}`;
++	const id = String(userId || "unknown");
++	if (id === "unknown") return "Unknown Site";
++	return `Deleted Site (${id.slice(-6).toUpperCase()})`;
+ };
+ 
+-const SOICCriticalSites = ({ alerts = [], healthScores = [], fullPage = false }) => {
++const SOICCriticalSites = ({ alerts = [], healthScores = [], fullPage = false, onSiteClick }) => {
+ 	const criticalAlerts = alerts
+ 		.filter((item) => ["P4", "P5"].includes(item.priority))
+ 		.slice(0, fullPage ? alerts.length : 5);
+@@ -46,7 +46,12 @@ const SOICCriticalSites = ({ alerts = [], healthScores = [], fullPage = false })
+ 									<div className="flex items-start justify-between gap-3">
+ 										<div className="min-w-0">
+ 											<div className="flex items-center gap-2">
+-												<p className="text-sm font-bold text-slate-900">{siteLabel(alert.user_name || alert.site_name, alert.user_id)}</p>
++												<button 
++													onClick={() => onSiteClick && onSiteClick(alert.user_id)}
++													className="truncate text-sm font-bold text-slate-900 hover:text-rose-700 hover:underline transition text-left"
++												>
++													{siteLabel(alert.user_name || alert.site_name, alert.user_id)}
++												</button>
+ 												<span className={`rounded-full border px-2 py-0.5 text-xs font-black ${meta.color}`}>
+ 													{meta.label}
+ 												</span>
+@@ -62,6 +67,9 @@ const SOICCriticalSites = ({ alerts = [], healthScores = [], fullPage = false })
+ 											{" ΓÇö "}
+ 											<span className="text-slate-500">
+ 												Expected {(baselinePct * 100).toFixed(0)}%, getting {(actualPct * 100).toFixed(0)}%
++												{alert.predicted_generation_kwh > 0 && alert.actual_generation_kwh !== undefined && (
++													<span className="ml-1 font-medium">({Number(alert.actual_generation_kwh).toFixed(1)} kW / {Number(alert.predicted_generation_kwh).toFixed(1)} kW)</span>
++												)}
+ 											</span>
+ 										</div>
+ 									)}
+diff --git a/frontend/src/components/SOIC/SOICDegradedSites.jsx b/frontend/src/components/SOIC/SOICDegradedSites.jsx
+index b05ada6..e33ea77 100644
+--- a/frontend/src/components/SOIC/SOICDegradedSites.jsx
++++ b/frontend/src/components/SOIC/SOICDegradedSites.jsx
+@@ -24,7 +24,7 @@ const getGapLabel = (ratio) => {
+ 	return { label: "Critically underproducing", color: "text-red-700" };
+ };
+ 
+-const SOICDegradedSites = ({ metrics = {} }) => {
++const SOICDegradedSites = ({ metrics = {}, onSiteClick }) => {
+ 	const list = Array.isArray(metrics.top_5_worst_performers) ? metrics.top_5_worst_performers : [];
+ 
+ 	return (
+@@ -51,7 +51,12 @@ const SOICDegradedSites = ({ metrics = {} }) => {
+ 												{index + 1}
+ 											</span>
+ 											<div className="min-w-0">
+-												<p className="truncate text-sm font-bold text-slate-900">{siteLabel(site.user_name, site.user_id)}</p>
++												<button 
++													onClick={() => onSiteClick && onSiteClick(site.user_id)}
++													className="block truncate text-sm font-bold text-slate-900 hover:text-orange-700 hover:underline transition text-left"
++												>
++													{siteLabel(site.user_name || site.name, site.user_id)}
++												</button>
+ 												<p className={`text-xs font-semibold ${gapInfo.color}`}>{gapInfo.label}</p>
+ 											</div>
+ 										</div>
+diff --git a/frontend/src/components/SOIC/SOICFleetOverview.jsx b/frontend/src/components/SOIC/SOICFleetOverview.jsx
+index 77c6d24..049059f 100644
+--- a/frontend/src/components/SOIC/SOICFleetOverview.jsx
++++ b/frontend/src/components/SOIC/SOICFleetOverview.jsx
+@@ -30,7 +30,7 @@ const getReliabilityInsight = (avgPR, realTimeSiteCount) => {
+ 	return `Connected sites are at ${pct}% of expected output ΓÇö investigate low-performing sites.`;
+ };
+ 
+-const SOICFleetOverview = ({ metrics = {}, healthScores = [], activeAlerts = [], watchlist = [] }) => {
++const SOICFleetOverview = ({ metrics = {}, healthScores = [], activeAlerts = [] }) => {
+ 	const totalSites = safeNumber(metrics.total_sites);
+ 	const healthySites = safeNumber(metrics.healthy_sites);
+ 	const warningSites = safeNumber(metrics.warning_sites);
+diff --git a/frontend/src/components/SOIC/SOICRecoveredSites.jsx b/frontend/src/components/SOIC/SOICRecoveredSites.jsx
+index e55adbb..7ef8c0b 100644
+--- a/frontend/src/components/SOIC/SOICRecoveredSites.jsx
++++ b/frontend/src/components/SOIC/SOICRecoveredSites.jsx
+@@ -6,7 +6,7 @@ const siteLabel = (name, value) => {
+ 
+ 	const id = String(value || "unknown");
+ 	if (id === "unknown") return "Site Unknown";
+-	return `Site ${id.slice(-6).toUpperCase()}`;
++	return `Deleted Site (${id.slice(-6).toUpperCase()})`;
+ };
+ 
+ const formatDate = (value) => {
+@@ -16,7 +16,7 @@ const formatDate = (value) => {
+ 	return date.toLocaleDateString([], { month: "short", day: "numeric" });
+ };
+ 
+-const SOICRecoveredSites = ({ alerts = [] }) => {
++const SOICRecoveredSites = ({ alerts = [], onSiteClick }) => {
+ 	const recovered = alerts
+ 		.filter((item) => item.status === "AUTO_RESOLVED" || item.status === "RESOLVED")
+ 		.sort((left, right) => new Date(right.resolved_at || right.auto_resolved_at || right.updated_at || 0) - new Date(left.resolved_at || left.auto_resolved_at || left.updated_at || 0))
+@@ -41,11 +41,16 @@ const SOICRecoveredSites = ({ alerts = [] }) => {
+ 							<div key={alert._id || `${alert.user_id}-${alert.title}`} className="rounded-xl border border-blue-100 bg-blue-50/45 p-3">
+ 								<div className="flex items-start justify-between gap-3">
+ 									<div className="min-w-0">
+-										<p className="truncate text-sm font-bold text-slate-900">{siteLabel(alert.user_name || alert.site_name, alert.user_id)}</p>
++										<button 
++											onClick={() => onSiteClick && onSiteClick(alert.user_id)}
++											className="truncate text-sm font-bold text-slate-900 hover:text-blue-700 hover:underline transition text-left block"
++										>
++											{siteLabel(alert.user_name || alert.site_name, alert.user_id)}
++										</button>
+ 										<p className="mt-1 text-xs font-semibold text-slate-600">{getSimpleAlertText(alert.short_message || alert.title || "Alert resolved")}</p>
+ 									</div>
+-									<span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-black text-emerald-700">
+-										{alert.status === "AUTO_RESOLVED" ? "AUTO" : "DONE"}
++									<span className="rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-black text-emerald-700 uppercase tracking-wide">
++										{alert.status === "AUTO_RESOLVED" ? "Auto Resolved" : "Manual Resolve"}
+ 									</span>
+ 								</div>
+ 								<div className="mt-3 flex items-center justify-between gap-3 text-xs">
+diff --git a/frontend/src/components/SOIC/SOICWatchlist.jsx b/frontend/src/components/SOIC/SOICWatchlist.jsx
+index a4dcf05..104ca43 100644
+--- a/frontend/src/components/SOIC/SOICWatchlist.jsx
++++ b/frontend/src/components/SOIC/SOICWatchlist.jsx
+@@ -22,13 +22,14 @@ const formatDate = (value) => {
+ 	return date.toLocaleDateString([], { month: "short", day: "numeric" });
+ };
+ 
+-const siteLabel = (value) => {
++const siteLabel = (value, fallbackName) => {
++	if (fallbackName && fallbackName.trim()) return fallbackName.trim();
+ 	const id = String(value || "unknown");
+ 	if (id === "unknown") return "Site Unknown";
+-	return `Site ${id.slice(-6).toUpperCase()}`;
++	return `Deleted Site (${id.slice(-6).toUpperCase()})`;
+ };
+ 
+-const SOICWatchlist = ({ items = [], fullPage = false }) => {
++const SOICWatchlist = ({ items = [], fullPage = false, onSiteClick }) => {
+ 	const visibleItems = items.slice(0, fullPage ? items.length : 6);
+ 
+ 	return (
+@@ -54,10 +55,13 @@ const SOICWatchlist = ({ items = [], fullPage = false }) => {
+ 							return (
+ 								<div key={item._id || `${item.user_id}-${item.date}-${index}`} className="rounded-xl border border-amber-100 bg-amber-50/45 p-3 transition hover:border-amber-200 hover:bg-amber-50">
+ 									<div className="flex items-start justify-between gap-3">
+-										<div className="min-w-0">
+-											<p className="truncate text-sm font-bold text-slate-900">{siteLabel(item.user_id)}</p>
++										<button 
++											onClick={() => onSiteClick && onSiteClick(item.user_id)}
++											className="min-w-0 text-left transition hover:opacity-70"
++										>
++											<p className="truncate text-sm font-bold text-slate-900">{siteLabel(item.user_id, item.user_name)}</p>
+ 											<p className="mt-1 text-xs font-semibold text-slate-500">{formatDate(item.date)}</p>
+-										</div>
++										</button>
+ 										<div className="text-right">
+ 											<p className="text-lg font-bold text-amber-700">{formatRatio(ratio)}</p>
+ 											<p className="text-xs font-semibold text-slate-500">PR</p>
+@@ -98,11 +102,12 @@ const SOICWatchlist = ({ items = [], fullPage = false }) => {
+ 					</div>
+ 				) : (
+ 					<div className="py-8 text-center">
+-						<div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-xs font-black text-slate-500">
+-							PR
++						<p className="text-sm font-bold text-slate-700">No watchlist sites today.</p>
++						<div className="mt-4 inline-flex flex-col items-start rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-left">
++							<p className="text-xs font-bold text-slate-600 mb-1">Thresholds:</p>
++							<p className="text-[11px] font-semibold text-amber-700">Warning = 80%</p>
++							<p className="text-[11px] font-semibold text-emerald-700 mt-0.5">Healthy = 95%</p>
+ 						</div>
+-						<p className="mt-3 text-sm font-bold text-slate-700">No watchlist items</p>
+-						<p className="mt-1 text-xs text-slate-500">Sites between warning and healthy thresholds will appear here.</p>
+ 					</div>
+ 				)}
+ 			</div>
+diff --git a/frontend/src/components/SOIC/alertCopy.js b/frontend/src/components/SOIC/alertCopy.js
+index 1e95364..4588c1e 100644
+--- a/frontend/src/components/SOIC/alertCopy.js
++++ b/frontend/src/components/SOIC/alertCopy.js
+@@ -72,12 +72,12 @@ export const getFriendlyRecommendation = (text) => {
+ 
+ // ΓöÇΓöÇΓöÇ Priority ΓåÆ human label + urgency colour ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ export const priorityMeta = {
+-	P5: { label: "Urgent", emoji: "≡ƒö┤", color: "border-red-300 bg-red-600 text-white" },
+-	P4: { label: "High", emoji: "≡ƒƒá", color: "border-rose-200 bg-rose-50 text-rose-800" },
+-	P3: { label: "Medium", emoji: "≡ƒƒí", color: "border-orange-200 bg-orange-50 text-orange-800" },
+-	P2: { label: "Low", emoji: "≡ƒƒí", color: "border-amber-200 bg-amber-50 text-amber-700" },
++	P5: { label: "Critical", emoji: "≡ƒö┤", color: "border-red-300 bg-red-600 text-white" },
++	P4: { label: "Critical", emoji: "≡ƒö┤", color: "border-red-200 bg-red-50 text-red-800" },
++	P3: { label: "Warning", emoji: "≡ƒƒá", color: "border-orange-200 bg-orange-50 text-orange-800" },
++	P2: { label: "Review", emoji: "≡ƒƒí", color: "border-yellow-200 bg-yellow-50 text-yellow-800" },
+ 	P1: { label: "Info", emoji: "≡ƒö╡", color: "border-blue-200 bg-blue-50 text-blue-700" },
+-	P0: { label: "Note", emoji: "ΓÜ¬", color: "border-slate-200 bg-slate-50 text-slate-600" }
++	P0: { label: "Info", emoji: "≡ƒö╡", color: "border-slate-200 bg-slate-50 text-slate-600" }
+ };
+ 
+ // ΓöÇΓöÇΓöÇ Health score ΓåÆ plain English status ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+diff --git a/frontend/src/pages/SOICDashboard.jsx b/frontend/src/pages/SOICDashboard.jsx
+index 221e074..207d8a7 100644
+--- a/frontend/src/pages/SOICDashboard.jsx
++++ b/frontend/src/pages/SOICDashboard.jsx
+@@ -8,8 +8,10 @@ import SOICBestPerformers from "../components/SOIC/SOICBestPerformers";
+ import SOICDegradedSites from "../components/SOIC/SOICDegradedSites";
+ import SOICRecoveredSites from "../components/SOIC/SOICRecoveredSites";
+ import {
+-	fetchSOICDashboard
++	fetchSOICDashboard,
++	resolveSOICAlert
+ } from "../services/soicApi";
++import SiteDetailsDrawer from "../components/SOIC/SiteDetailsDrawer";
+ 
+ const EMPTY_METRICS = {
+ 	total_sites: 0,
+@@ -59,6 +61,11 @@ const SOICDashboard = () => {
+ 	const [error, setError] = useState("");
+ 	const [activeTab, setActiveTab] = useState("overview");
+ 	const [lastUpdated, setLastUpdated] = useState(null);
++	const [selectedSiteId, setSelectedSiteId] = useState(null);
++
++	const handleSiteClick = useCallback((siteId) => {
++		setSelectedSiteId(siteId);
++	}, []);
+ 
+ 	const fetchOperationsData = useCallback(async ({ forceRefresh = false } = {}) => {
+ 		setLoading(true);
+@@ -98,6 +105,15 @@ const SOICDashboard = () => {
+ 		};
+ 	}, [fetchOperationsData]);
+ 
++	const handleResolveAlert = async (alertId, reason) => {
++		try {
++			await resolveSOICAlert(alertId, { reason });
++			fetchOperationsData({ forceRefresh: true });
++		} catch (err) {
++			setError(err.message || "Failed to resolve alert");
++		}
++	};
++
+ 	const criticalAlerts = useMemo(
+ 		() => activeAlerts.filter((alert) => ["P4", "P5"].includes(alert.priority)),
+ 		[activeAlerts]
+@@ -123,7 +139,7 @@ const SOICDashboard = () => {
+ 
+ 				<nav className="space-y-2">
+ 					<p className="rounded-xl border-l-4 border-amber-500 bg-gradient-to-r from-amber-100/80 to-transparent px-3 py-2 text-sm font-semibold text-amber-800">
+-						Operations Center
++						Alerts Monitor System
+ 					</p>
+ 					{tabs.map((tab) => (
+ 						<button
+@@ -158,8 +174,8 @@ const SOICDashboard = () => {
+ 			<header className="sticky top-0 z-30 border-b border-slate-200/70 bg-white/80 px-3 py-3 backdrop-blur-xl sm:px-4 lg:pl-[17.5rem] lg:pr-8">
+ 				<div className="mx-auto flex max-w-7xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+ 					<div>
+-						<div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500 sm:text-xs">Operations Intelligence</div>
+-						<p className="text-sm font-bold text-slate-800 lg:hidden">SOIC Dashboard</p>
++						<div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500 sm:text-xs">Alerts Monitor System</div>
++						<p className="text-sm font-bold text-slate-800 lg:hidden">Alerts Monitor System</p>
+ 					</div>
+ 					<div className="flex flex-wrap items-center gap-2 sm:justify-end">
+ 						{lastUpdated && (
+@@ -208,7 +224,7 @@ const SOICDashboard = () => {
+ 						<div className="relative grid gap-5 p-5 sm:p-6 lg:grid-cols-[1fr_20rem] lg:items-end">
+ 							<div className="space-y-2">
+ 								<p className="inline-block rounded-full bg-amber-100 px-3 py-1 text-xs font-bold uppercase tracking-wide text-amber-800">SOIC</p>
+-								<h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl md:text-4xl">Solar Operations Intelligence Center</h1>
++								<h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl md:text-4xl">Alerts Monitor System</h1>
+ 								<p className="max-w-3xl text-sm text-slate-600 sm:text-base">
+ 									Fleet health, alert urgency, degradation signals, and recovery status in one operations view.
+ 								</p>
+@@ -239,7 +255,7 @@ const SOICDashboard = () => {
+ 					{loading ? (
+ 						<div className="rounded-2xl border border-slate-200/80 bg-white/88 p-10 text-center shadow-sm">
+ 							<div className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-emerald-100 border-t-emerald-600" />
+-							<p className="mt-4 text-sm font-bold text-slate-700">Loading operations intelligence...</p>
++							<p className="mt-4 text-sm font-bold text-slate-700">Loading alerts monitor system...</p>
+ 						</div>
+ 					) : (
+ 						<>
+@@ -254,30 +270,37 @@ const SOICDashboard = () => {
+ 
+ 									<div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+ 										<div className="lg:col-span-2">
+-											<SOICActiveAlerts alerts={activeAlerts} />
++											<SOICActiveAlerts alerts={activeAlerts} onResolve={handleResolveAlert} onSiteClick={handleSiteClick} />
+ 										</div>
+-										<SOICCriticalSites alerts={activeAlerts} healthScores={healthScores} />
++										<SOICCriticalSites alerts={activeAlerts} healthScores={healthScores} onSiteClick={handleSiteClick} />
+ 									</div>
+ 
+ 									<div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+-										<SOICBestPerformers metrics={fleetMetrics} />
+-										<SOICDegradedSites metrics={fleetMetrics} />
++										<SOICBestPerformers metrics={fleetMetrics} onSiteClick={handleSiteClick} />
++										<SOICDegradedSites metrics={fleetMetrics} onSiteClick={handleSiteClick} />
+ 									</div>
+ 
+ 									<div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+-										<SOICWatchlist items={watchlist} />
+-										<SOICRecoveredSites alerts={allAlerts} />
++										<SOICWatchlist items={watchlist} onSiteClick={handleSiteClick} />
++										<SOICRecoveredSites alerts={allAlerts} onSiteClick={handleSiteClick} />
+ 									</div>
+ 								</>
+ 							)}
+ 
+-							{activeTab === "alerts" && <SOICActiveAlerts alerts={activeAlerts} fullPage />}
+-							{activeTab === "watchlist" && <SOICWatchlist items={watchlist} fullPage />}
+-							{activeTab === "critical" && <SOICCriticalSites alerts={activeAlerts} healthScores={healthScores} fullPage />}
++							{activeTab === "alerts" && <SOICActiveAlerts alerts={activeAlerts} fullPage onResolve={handleResolveAlert} onSiteClick={handleSiteClick} />}
++							{activeTab === "watchlist" && <SOICWatchlist items={watchlist} fullPage onSiteClick={handleSiteClick} />}
++							{activeTab === "critical" && <SOICCriticalSites alerts={activeAlerts} healthScores={healthScores} fullPage onSiteClick={handleSiteClick} />}
+ 						</>
+ 					)}
+ 				</div>
+ 			</main>
++			
++			<SiteDetailsDrawer 
++				siteId={selectedSiteId} 
++				isOpen={!!selectedSiteId} 
++				onClose={() => setSelectedSiteId(null)} 
++				allAlerts={allAlerts} 
++			/>
+ 		</div>
+ 	);
+ };
+diff --git a/frontend/src/pages/UsersDashboardPage.jsx b/frontend/src/pages/UsersDashboardPage.jsx
+index 805e0a5..9d65080 100644
+--- a/frontend/src/pages/UsersDashboardPage.jsx
++++ b/frontend/src/pages/UsersDashboardPage.jsx
+@@ -9,6 +9,7 @@ const DEFAULT_FORM = {
+ 	name: "",
+ 	email: "",
+ 	phoneNumber: "",
++	siteId: "",
+ 	inverterSerialNumber: "",
+ 	latitude: "",
+ 	longitude: "",
+@@ -105,6 +106,7 @@ const UsersDashboardPage = () => {
+ 			name: user.name,
+ 			email: user.email,
+ 			phoneNumber: user.phoneNumber,
++			siteId: user.siteId ?? "",
+ 			inverterSerialNumber: user.inverterSerialNumber ?? "",
+ 			latitude: String(user.location?.latitude ?? ""),
+ 			longitude: String(user.location?.longitude ?? ""),
+@@ -134,6 +136,7 @@ const UsersDashboardPage = () => {
+ 				name: formData.name.trim(),
+ 				email: formData.email.trim(),
+ 				phoneNumber: formData.phoneNumber.trim(),
++				siteId: formData.siteId.trim(),
+ 				inverterSerialNumber: formData.inverterSerialNumber.trim(),
+ 				location: {
+ 					latitude: Number(formData.latitude),
+@@ -183,7 +186,7 @@ const UsersDashboardPage = () => {
+ 
+ 		return users.filter((user) => {
+ 			const location = `${user.location?.latitude ?? ""}, ${user.location?.longitude ?? ""}`;
+-			return [user.name, user.email, user.phoneNumber, user.inverterSerialNumber, String(user.systemCapacity), location]
++			return [user.name, user.email, user.phoneNumber, user.siteId, user.inverterSerialNumber, String(user.systemCapacity), location]
+ 				.some((value) => String(value ?? "").toLowerCase().includes(query));
+ 		});
+ 	}, [searchText, users]);
+@@ -236,7 +239,7 @@ const UsersDashboardPage = () => {
+ 							className="w-full rounded-xl border border-amber-200 bg-gradient-to-r from-amber-50/80 to-orange-50/80 px-3 py-2.5 text-left text-sm font-semibold text-amber-800 transition hover:bg-amber-100/50"
+ 							onClick={() => navigate("/soic")}
+ 						>
+-							≡ƒÜ¿ Operations Center
++							≡ƒÜ¿ Alerts Monitor System
+ 						</button>
+ 					</div>
+ 				</nav>
+@@ -299,6 +302,13 @@ const UsersDashboardPage = () => {
+ 					>
+ 						New Installation
+ 					</button>
++					<button
++						type="button"
++						className="rounded-xl border border-amber-200 bg-gradient-to-r from-amber-50/80 to-orange-50/80 px-4 py-2.5 text-sm font-semibold text-amber-800 shadow transition hover:-translate-y-0.5 hover:shadow-lg sm:col-span-2"
++						onClick={() => navigate("/soic")}
++					>
++						≡ƒÜ¿ Alerts Monitor System
++					</button>
+ 				</div>
+ 			</div>
+ 
+@@ -396,7 +406,7 @@ const UsersDashboardPage = () => {
+ 									{editingUserId ? "Edit User" : "Add New User"}
+ 								</h3>
+ 								<p className="mt-1 text-sm text-slate-600">
+-									{editingUserId ? "Update user information and settings." : "Fill in all required fields to create a user profile."}
++									{editingUserId ? "Update user information and settings." : "Fill in the core fields now; site id and inverter serial can be added later from edit."}
+ 								</p>
+ 							</div>
+ 							<button
+@@ -412,7 +422,8 @@ const UsersDashboardPage = () => {
+ 							<input className="rounded-lg border border-slate-300 px-3 py-2 text-sm" name="name" value={formData.name} onChange={handleFormFieldChange} placeholder="Full name" required />
+ 							<input className="rounded-lg border border-slate-300 px-3 py-2 text-sm" name="email" type="email" value={formData.email} onChange={handleFormFieldChange} placeholder="Email" required />
+ 							<input className="rounded-lg border border-slate-300 px-3 py-2 text-sm" name="phoneNumber" value={formData.phoneNumber} onChange={handleFormFieldChange} placeholder="Phone number" required />
+-							<input className="rounded-lg border border-slate-300 px-3 py-2 text-sm" name="inverterSerialNumber" value={formData.inverterSerialNumber} onChange={handleFormFieldChange} placeholder="Inverter Serial Number" />
++							<input className="rounded-lg border border-slate-300 px-3 py-2 text-sm" name="siteId" value={formData.siteId} onChange={handleFormFieldChange} placeholder="Site ID (optional)" />
++							<input className="rounded-lg border border-slate-300 px-3 py-2 text-sm" name="inverterSerialNumber" value={formData.inverterSerialNumber} onChange={handleFormFieldChange} placeholder="Inverter Serial Number (optional)" />
+ 							<input className="rounded-lg border border-slate-300 px-3 py-2 text-sm" name="systemCapacity" type="number" step="0.01" value={formData.systemCapacity} onChange={handleFormFieldChange} placeholder="System Capacity (kW)" required />
+ 							<input className="rounded-lg border border-slate-300 px-3 py-2 text-sm" name="numberOfPanels" type="number" step="1" value={formData.numberOfPanels} onChange={handleFormFieldChange} placeholder="Number of Panels" required />
+ 							<input className="rounded-lg border border-slate-300 px-3 py-2 text-sm" name="latitude" type="number" step="0.0001" value={formData.latitude} onChange={handleFormFieldChange} placeholder="Latitude" required />

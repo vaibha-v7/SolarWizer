@@ -72,12 +72,12 @@ export const getFriendlyRecommendation = (text) => {
 
 // ─── Priority → human label + urgency colour ─────────────────────────────────
 export const priorityMeta = {
-	P5: { label: "Urgent", emoji: "🔴", color: "border-red-300 bg-red-600 text-white" },
-	P4: { label: "High", emoji: "🟠", color: "border-rose-200 bg-rose-50 text-rose-800" },
-	P3: { label: "Medium", emoji: "🟡", color: "border-orange-200 bg-orange-50 text-orange-800" },
-	P2: { label: "Low", emoji: "🟡", color: "border-amber-200 bg-amber-50 text-amber-700" },
+	P5: { label: "Critical", emoji: "🔴", color: "border-red-300 bg-red-600 text-white" },
+	P4: { label: "Critical", emoji: "🔴", color: "border-red-200 bg-red-50 text-red-800" },
+	P3: { label: "Warning", emoji: "🟠", color: "border-orange-200 bg-orange-50 text-orange-800" },
+	P2: { label: "Review", emoji: "🟡", color: "border-yellow-200 bg-yellow-50 text-yellow-800" },
 	P1: { label: "Info", emoji: "🔵", color: "border-blue-200 bg-blue-50 text-blue-700" },
-	P0: { label: "Note", emoji: "⚪", color: "border-slate-200 bg-slate-50 text-slate-600" }
+	P0: { label: "Info", emoji: "🔵", color: "border-slate-200 bg-slate-50 text-slate-600" }
 };
 
 // ─── Health score → plain English status ─────────────────────────────────────
