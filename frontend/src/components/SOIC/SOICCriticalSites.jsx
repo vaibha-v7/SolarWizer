@@ -1,4 +1,34 @@
-import { getFriendlyMessage, getHealthLabel, priorityMeta } from "./alertCopy";
+import { useState } from "react";
+
+const formatAgeDays = (value) => {
+	if (!value) return "0 Days";
+	const date = new Date(value);
+	if (Number.isNaN(date.getTime())) return "0 Days";
+	
+	const diffMs = new Date() - date;
+	if (diffMs < 0) return "0 Days";
+	
+	const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+	return `${diffDays} Day${diffDays !== 1 ? "s" : ""}`;
+};
+
+const formatTimeAgo = (value) => {
+	if (!value) return "Unknown";
+	const date = new Date(value);
+	if (Number.isNaN(date.getTime())) return "Unknown";
+	
+	const diffMs = new Date() - date;
+	if (diffMs < 0) return "Just now";
+	
+	const diffMins = Math.floor(diffMs / 60000);
+	const diffHrs = Math.floor(diffMins / 60);
+	const diffDays = Math.floor(diffHrs / 24);
+	
+	if (diffDays > 0) return `${diffDays} Days Ago`;
+	if (diffHrs > 0) return `${diffHrs} Hours Ago`;
+	if (diffMins > 0) return `${diffMins} Minutes Ago`;
+	return "Just now";
+};
 
 const siteLabel = (name, userId) => {
 	const label = String(name || "").trim();
@@ -8,106 +38,72 @@ const siteLabel = (name, userId) => {
 	return `Deleted Site (${id.slice(-6).toUpperCase()})`;
 };
 
-const SOICCriticalSites = ({ alerts = [], healthScores = [], fullPage = false, onSiteClick }) => {
+const SOICCriticalSites = ({ alerts = [], fullPage = false }) => {
 	const criticalAlerts = alerts
-		.filter((item) => ["P4", "P5"].includes(item.priority))
+		.filter((item) => item.severity === "CRITICAL")
 		.slice(0, fullPage ? alerts.length : 5);
 
-	const criticalScores = healthScores
-		.filter((score) => String(score.health_category || "").toUpperCase() === "CRITICAL" || Number(score.health_score) < 45)
-		.slice(0, fullPage ? healthScores.length : 5);
-
 	return (
-		<section className="overflow-hidden rounded-2xl border border-rose-200/80 bg-white/90 shadow-sm">
-			<div className="border-b border-rose-100 bg-gradient-to-r from-rose-50 to-orange-50 px-4 py-3 sm:px-5">
-				<div className="flex items-start justify-between gap-3">
-					<div>
-						<p className="text-xs font-bold uppercase tracking-[0.14em] text-rose-600">🚨 Needs Immediate Action</p>
-						<h2 className="mt-1 text-lg font-bold text-slate-900">Sites in Critical State</h2>
-					</div>
-					<span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-rose-700 shadow-sm">
-						{criticalAlerts.length} {criticalAlerts.length === 1 ? "site" : "sites"}
-					</span>
-				</div>
+		<div className="rounded-2xl border border-rose-200/80 bg-white/88 shadow-sm overflow-hidden w-full overflow-x-auto">
+			<div className="border-b border-rose-200/80 bg-rose-50/50 px-5 py-4">
+				<h2 className="text-sm font-bold text-rose-900 tracking-wide uppercase">CRITICAL SITES</h2>
+				<p className="text-xs text-rose-600/80 mt-1">Sites in a critical state requiring immediate action.</p>
 			</div>
-
-			<div className="p-4 sm:p-5">
-				{criticalAlerts.length ? (
-					<div className="space-y-3">
-						{criticalAlerts.map((alert) => {
-							const meta = priorityMeta[alert.priority] || priorityMeta.P4;
-							const message = getFriendlyMessage(alert.short_message || alert.title || "");
-							const actualPct = Number(alert.actual_performance || 0);
-							const baselinePct = Number(alert.baseline_performance || 0);
-							const gap = baselinePct > 0 ? Math.round(((baselinePct - actualPct) / baselinePct) * 100) : null;
+			<table className="w-full text-left border-collapse min-w-[800px]">
+				<thead>
+					<tr className="border-b border-rose-100 bg-rose-50/30">
+						<th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-rose-700">Site Name</th>
+						<th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-rose-700">Alert Days (10d)</th>
+						<th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-rose-700">Status</th>
+						<th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-rose-700">Expected Output</th>
+						<th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-rose-700">Actual Output</th>
+						<th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-rose-700">Last Telemetry</th>
+					</tr>
+				</thead>
+				<tbody>
+					{criticalAlerts.length === 0 ? (
+						<tr>
+							<td colSpan="6" className="px-5 py-12 text-center text-sm font-bold text-slate-500">
+								No critical sites at this time.
+							</td>
+						</tr>
+					) : (
+						criticalAlerts.map((alert) => {
+							const status = alert.status || "Underperforming";
+							const isConnectivity = status === "Not Connected";
+							const expected = alert.expected_output_kwh ? Number(alert.expected_output_kwh).toFixed(1) : null;
+							const actual = alert.actual_output_kwh !== undefined && alert.actual_output_kwh !== null ? Number(alert.actual_output_kwh).toFixed(1) : null;
+							
+							const ageDays = alert.alert_days_10d || 0;
+							const lastTelemetry = formatTimeAgo(alert.last_telemetry);
 
 							return (
-								<div key={alert._id || `${alert.user_id}-${alert.title}`} className="rounded-xl border border-rose-100 bg-rose-50/70 p-3">
-									<div className="flex items-start justify-between gap-3">
-										<div className="min-w-0">
-											<div className="flex items-center gap-2">
-												<button 
-													onClick={() => onSiteClick && onSiteClick(alert.user_id)}
-													className="truncate text-sm font-bold text-slate-900 hover:text-rose-700 hover:underline transition text-left"
-												>
-													{siteLabel(alert.user_name || alert.site_name, alert.user_id)}
-												</button>
-												<span className={`rounded-full border px-2 py-0.5 text-xs font-black ${meta.color}`}>
-													{meta.label}
-												</span>
-											</div>
-											<p className="mt-1 text-xs text-slate-600">{message}</p>
-										</div>
-									</div>
-									{gap !== null && gap > 0 && (
-										<div className="mt-2 rounded-lg bg-white/60 px-3 py-1.5 text-xs">
-											<span className="font-semibold text-rose-700">
-												Producing {gap}% below expected
-											</span>
-											{" — "}
-											<span className="text-slate-500">
-												Expected {(baselinePct * 100).toFixed(0)}%, getting {(actualPct * 100).toFixed(0)}%
-												{alert.predicted_generation_kwh > 0 && alert.actual_generation_kwh !== undefined && (
-													<span className="ml-1 font-medium">({Number(alert.actual_generation_kwh).toFixed(1)} kW / {Number(alert.predicted_generation_kwh).toFixed(1)} kW)</span>
-												)}
-											</span>
-										</div>
-									)}
-								</div>
+								<tr key={alert.user_id} className="border-b border-slate-100 hover:bg-rose-50/30 transition">
+									<td className="px-4 py-3 text-sm font-bold text-slate-900">
+										{siteLabel(alert.user_name || alert.site_name, alert.user_id)}
+									</td>
+									<td className="px-4 py-3 text-sm font-medium text-slate-700">
+										{ageDays}
+									</td>
+									<td className="px-4 py-3 text-sm font-semibold text-rose-600">
+										{status}
+									</td>
+									<td className="px-4 py-3 text-sm font-medium text-slate-700">
+										{isConnectivity || !expected ? "—" : `${expected} kW`}
+									</td>
+									<td className="px-4 py-3 text-sm font-medium text-slate-700">
+										{isConnectivity || !actual ? "—" : `${actual} kW`}
+									</td>
+									<td className="px-4 py-3 text-sm font-medium text-slate-500">
+										{lastTelemetry}
+									</td>
+								</tr>
 							);
-						})}
-					</div>
-				) : criticalScores.length ? (
-					<div className="space-y-3">
-						{criticalScores.map((score) => {
-							const healthMeta = getHealthLabel(score.health_score);
-							return (
-								<div key={score._id || String(score.user_id)} className="rounded-xl border border-amber-100 bg-amber-50/70 p-3">
-									<div className="flex items-center justify-between gap-3">
-										<div>
-											<p className="text-sm font-bold text-slate-900">{siteLabel(score.user_name || score.site_name, score.user_id)}</p>
-											<p className={`mt-1 text-xs font-semibold ${healthMeta.color}`}>Health: {healthMeta.label}</p>
-										</div>
-										<div className="text-right">
-											<p className="text-lg font-bold text-slate-800">{Number(score.health_score || 0).toFixed(0)}</p>
-											<p className="text-xs text-slate-500">out of 100</p>
-										</div>
-									</div>
-								</div>
-							);
-						})}
-					</div>
-				) : (
-					<div className="py-8 text-center">
-						<div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 text-2xl">
-							✅
-						</div>
-						<p className="mt-3 text-sm font-bold text-slate-700">No critical sites right now</p>
-						<p className="mt-1 text-xs text-slate-500">All sites are running within acceptable range.</p>
-					</div>
-				)}
-			</div>
-		</section>
+						})
+					)}
+				</tbody>
+			</table>
+		</div>
 	);
 };
 

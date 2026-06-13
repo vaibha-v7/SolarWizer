@@ -2,7 +2,6 @@ const SiteDailyPerformance = require("../models/SiteDailyPerformance");
 const DailyPrediction = require("../models/DailyPrediction");
 const MonthlyData = require("../models/monthlydata");
 const UserData = require("../models/data");
-const SiteBaselineProfile = require("../models/SiteBaselineProfile");
 const { detectAnomaly } = require("../utils/anomalyDetector");
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -117,7 +116,7 @@ const getBaselineRatio = (baseline, user, monthlyReport) =>
 const buildSnapshotPayload = async ({ user, monthlyReport, prediction, date, dataSource }) => {
 	const forecast = findForecastForDate(monthlyReport, date);
 	const designRatio = computeDesignPerformanceRatio(user, monthlyReport);
-	const baseline = await SiteBaselineProfile.findOne({ user_id: user._id }).lean();
+	const baseline = null;
 	const baselineRatio = getBaselineRatio(baseline, user, monthlyReport);
 	const predicted =
 		safeNumber(prediction?.predicted_kwh) ||

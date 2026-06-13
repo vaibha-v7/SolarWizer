@@ -1,309 +1,173 @@
 const mongoose = require("mongoose");
-const Alert = require("../models/Alert");
 const UserData = require("../models/data");
-const SiteHealthScore = require("../models/SiteHealthScore");
-const FleetPerformanceMetrics = require("../models/FleetPerformanceMetrics");
 const SiteDailyPerformance = require("../models/SiteDailyPerformance");
-const SiteTrendAnalysis = require("../models/SiteTrendAnalysis");
+const DailyPrediction = require("../models/DailyPrediction");
 const { runSoicPipeline } = require("../services/soicScheduler");
 
-let hydrationPromise = null;
-let lastHydratedAt = 0;
-const HYDRATION_TTL_MS = 5 * 60 * 1000;
-
-const hydrateSoicAnalytics = async ({ force = false } = {}) => {
-const now = Date.now();
-if (!force && now - lastHydratedAt < HYDRATION_TTL_MS) return null;
-if (!force) {
-const latestMetrics = await FleetPerformanceMetrics.findOne().sort({ snapshot_date: -1 }).select("calculated_at").lean();
-const latestCalculatedAt = latestMetrics?.calculated_at ? new Date(latestMetrics.calculated_at).getTime() : 0;
-if (latestCalculatedAt && now - latestCalculatedAt < HYDRATION_TTL_MS) {
-lastHydratedAt = now;
-return null;
-}
-}
-if (!hydrationPromise) {
-hydrationPromise = runSoicPipeline()
-.then((result) => {
-lastHydratedAt = Date.now();
-return result;
-})
-.finally(() => {
-hydrationPromise = null;
-});
-}
-return hydrationPromise;
-};
-
 const respondError = (res, message, error, status = 500) => res.status(status).json({
-success: false,
-message,
-error: error?.message || String(error || "Unknown error")
+	success: false,
+	message,
+	error: error?.message || String(error || "Unknown error")
 });
 
 const enrichWithUserName = async (records = []) => {
-const userIds = [...new Set(records
-.map((record) => String(record?.user_id || ""))
-.filter((id) => mongoose.Types.ObjectId.isValid(id)))];
+	const userIds = [...new Set(records
+		.map((record) => String(record?.user_id || ""))
+		.filter((id) => mongoose.Types.ObjectId.isValid(id)))];
 
-if (!userIds.length) return records;
+	if (!userIds.length) return records;
 
-const users = await UserData.find({ _id: { $in: userIds } }).select("_id name").lean();
-const namesById = new Map(users.map((user) => [String(user._id), user.name]));
+	const users = await UserData.find({ _id: { $in: userIds } }).select("_id name").lean();
+	const namesById = new Map(users.map((user) => [String(user._id), user.name]));
 
-return records.map((record) => ({
-...record,
-user_name: namesById.get(String(record.user_id)) || record.user_name || ""
-}));
-};
-
-const getAlerts = async (req, res) => {
-try {
-await hydrateSoicAnalytics();
-const alerts = await Alert.find().sort({ created_at: -1 }).lean();
-const alertsWithNames = await enrichWithUserName(alerts);
-return res.status(200).json({ success: true, data: alertsWithNames });
-} catch (error) {
-return respondError(res, "Failed to fetch alerts", error);
-}
-};
-
-const getUserAlerts = async (req, res) => {
-try {
-const { userId } = req.params;
-if (!mongoose.Types.ObjectId.isValid(userId)) {
-return res.status(400).json({ success: false, message: "Invalid user id" });
-}
-const alerts = await Alert.find({ user_id: userId }).sort({ created_at: -1 }).lean();
-const alertsWithNames = await enrichWithUserName(alerts);
-return res.status(200).json({ success: true, data: alertsWithNames });
-} catch (error) {
-return respondError(res, "Failed to fetch user alerts", error);
-}
-};
-
-const getActiveAlerts = async (req, res) => {
-try {
-await hydrateSoicAnalytics();
-const alerts = await Alert.find({ status: { $in: ["CREATED", "ACTIVE", "ESCALATED"] } })
-.sort({ priority: -1, triggered_at: -1, created_at: -1 })
-.lean();
-const alertsWithNames = await enrichWithUserName(alerts);
-return res.status(200).json({ success: true, data: alertsWithNames });
-} catch (error) {
-return respondError(res, "Failed to fetch active alerts", error);
-}
-};
-
-const getAlertsByPriority = async (req, res) => {
-try {
-const { priority } = req.params;
-const alerts = await Alert.find({ priority }).sort({ created_at: -1 }).lean();
-const alertsWithNames = await enrichWithUserName(alerts);
-return res.status(200).json({ success: true, data: alertsWithNames });
-} catch (error) {
-return respondError(res, "Failed to fetch alerts by priority", error);
-}
-};
-
-const getHealthScores = async (req, res) => {
-try {
-await hydrateSoicAnalytics();
-const scores = await SiteHealthScore.find().sort({ health_score: -1 }).lean();
-	const scoresWithNames = await enrichWithUserName(scores);
-return res.status(200).json({ success: true, data: scoresWithNames });
-} catch (error) {
-return respondError(res, "Failed to fetch health scores", error);
-}
-};
-
-const getUserHealthScore = async (req, res) => {
-try {
-const { userId } = req.params;
-if (!mongoose.Types.ObjectId.isValid(userId)) {
-return res.status(400).json({ success: false, message: "Invalid user id" });
-}
-const score = await SiteHealthScore.findOne({ user_id: userId }).lean();
-return res.status(200).json({ success: true, data: score });
-} catch (error) {
-return respondError(res, "Failed to fetch user health score", error);
-}
-};
-
-const getFleetMetrics = async (req, res) => {
-try {
-await hydrateSoicAnalytics();
-const metrics = await FleetPerformanceMetrics.findOne().sort({ snapshot_date: -1 }).lean();
-return res.status(200).json({ success: true, data: metrics });
-} catch (error) {
-return respondError(res, "Failed to fetch fleet metrics", error);
-}
-};
-
-const getSitePerformance = async (req, res) => {
-try {
-const { userId } = req.params;
-if (!mongoose.Types.ObjectId.isValid(userId)) {
-return res.status(400).json({ success: false, message: "Invalid user id" });
-}
-const performance = await SiteDailyPerformance.find({ user_id: userId }).sort({ date: -1 }).lean();
-return res.status(200).json({ success: true, data: performance });
-} catch (error) {
-return respondError(res, "Failed to fetch site performance", error);
-}
-};
-
-const getSiteTrends = async (req, res) => {
-try {
-const { userId } = req.params;
-if (!mongoose.Types.ObjectId.isValid(userId)) {
-return res.status(400).json({ success: false, message: "Invalid user id" });
-}
-const trends = await SiteTrendAnalysis.find({ user_id: userId }).sort({ analysis_period: 1 }).lean();
-return res.status(200).json({ success: true, data: trends });
-} catch (error) {
-return respondError(res, "Failed to fetch trend analysis", error);
-}
-};
-
-const getWatchlist = async (req, res) => {
-try {
-await hydrateSoicAnalytics();
-const rows = await SiteDailyPerformance.find().sort({ user_id: 1, date: -1 }).lean();
-const latestByUser = new Map();
-for (const row of rows) {
-const key = String(row.user_id);
-if (!latestByUser.has(key)) latestByUser.set(key, row);
-}
-const watchlist = Array.from(latestByUser.values())
-		.filter((row) => row.data_source === 'daily_prediction_inverter')
-.filter((row) => {
-const baseline = Number(row.site_baseline_ratio || 0);
-if (!baseline) return row.performance_ratio >= 0.88 && row.performance_ratio < 0.95;
-return row.performance_ratio < baseline * 0.98 && row.performance_ratio >= baseline * 0.85;
-})
-.sort((left, right) => left.performance_ratio - right.performance_ratio)
-.slice(0, 50);
-	const enrichedWatchlist = await enrichWithUserName(watchlist);
-return res.status(200).json({ success: true, data: enrichedWatchlist });
-} catch (error) {
-return respondError(res, "Failed to fetch watchlist", error);
-}
+	return records.map((record) => ({
+		...record,
+		user_name: namesById.get(String(record.user_id)) || record.user_name || ""
+	}));
 };
 
 const getDashboard = async (req, res) => {
-try {
-await hydrateSoicAnalytics({ force: req.query.refresh === "true" });
-const [metrics, activeAlerts, alerts, healthScores] = await Promise.all([
-FleetPerformanceMetrics.findOne().sort({ snapshot_date: -1 }).lean(),
-Alert.find({ status: { $in: ["CREATED", "ACTIVE", "ESCALATED"] } })
-.sort({ priority: -1, triggered_at: -1, created_at: -1 })
-.lean(),
-Alert.find().sort({ triggered_at: -1, created_at: -1 }).lean(),
-SiteHealthScore.find().sort({ health_score: -1 }).lean()
-]);
+	try {
+		const activeUsers = await UserData.find({
+			isDeleted: { $ne: true },
+			status: { $ne: "deleted" }
+		}).lean();
+		const activeUserIds = new Set(activeUsers.map(u => String(u._id)));
 
-	const rows = await SiteDailyPerformance.find().sort({ user_id: 1, date: -1 }).lean();
-	const latestByUser = new Map();
-	for (const row of rows) {
-		const key = String(row.user_id);
-		if (!latestByUser.has(key)) latestByUser.set(key, row);
+		const metrics = { total_sites: activeUserIds.size, offline_sites: 0 };
+
+		// Report-page telemetry source of truth
+		const latestPredictions = await DailyPrediction.find().sort({ date: -1 }).lean();
+		const latestPredictionMap = new Map();
+		const isReportingMap = new Map();
+		for (const pred of latestPredictions) {
+			const uid = String(pred.userId);
+			if (!latestPredictionMap.has(uid)) {
+				latestPredictionMap.set(uid, pred);
+				isReportingMap.set(uid, pred.inverter_real_time_kwh !== "N/A");
+			}
+		}
+
+		const rows = await SiteDailyPerformance.find().sort({ user_id: 1, date: -1 }).lean();
+		const recordsByUser = new Map();
+		for (const row of rows) {
+			const key = String(row.user_id);
+			if (!recordsByUser.has(key)) {
+				recordsByUser.set(key, []);
+			}
+			recordsByUser.get(key).push(row);
+		}
+
+		const connectivityIssues = [];
+		const activeGenerationIssues = [];
+		const liveConnectedSites = [];
+
+		for (const [userId, userRows] of recordsByUser.entries()) {
+			if (!activeUserIds.has(userId)) continue;
+
+			const last10Days = userRows.slice(0, 10);
+			if (!last10Days.length) continue;
+
+			const todayRow = last10Days[0];
+			let expected = todayRow.predicted_generation_kwh || 0;
+			let actual = todayRow.actual_generation_kwh || 0;
+			
+			// SYNC WITH USER REPORT SOURCE OF TRUTH
+			const latestPred = latestPredictionMap.get(userId);
+			if (latestPred) {
+				const parsedExpected = Number(latestPred.predicted_kwh);
+				if (Number.isFinite(parsedExpected)) expected = parsedExpected;
+
+				const parsedActual = Number(latestPred.inverter_real_time_kwh);
+				if (Number.isFinite(parsedActual)) actual = parsedActual;
+				if (latestPred.inverter_real_time_kwh === "N/A") actual = 0;
+			}
+			
+			const diff_kwh = actual - expected;
+			const isReporting = isReportingMap.get(userId) ?? !todayRow.inverter_offline;
+
+			let alert_days_10d = 0;
+			let consecutive_alert_days = 0;
+			let brokenStreak = false;
+
+			for (const day of last10Days) {
+				const pr = day.performance_ratio || 0;
+				const isAlertDay = pr < 0.90 || day.inverter_offline;
+				
+				if (isAlertDay) alert_days_10d++;
+
+				if (!brokenStreak) {
+					if (isAlertDay) {
+						consecutive_alert_days++;
+					} else {
+						brokenStreak = true;
+					}
+				}
+			}
+
+			// Calculate Severity
+			let severity = "HEALTHY";
+			if (!isReporting) {
+				severity = "LOW";
+			} else if (diff_kwh >= 0) {
+				severity = "HEALTHY";
+			} else {
+				if (alert_days_10d >= 8 || expected === 0 || (actual/expected) < 0.50 || consecutive_alert_days >= 3) {
+					severity = "CRITICAL";
+				} else if ((actual/expected) < 0.70 || (alert_days_10d >= 6 && alert_days_10d <= 7)) {
+					severity = "HIGH";
+				} else if ((actual/expected) < 0.80 || (alert_days_10d >= 3 && alert_days_10d <= 5)) {
+					severity = "MEDIUM";
+				} else {
+					severity = "LOW";
+				}
+			}
+
+			const baseSite = {
+				user_id: userId,
+				severity,
+				alert_days_10d,
+				consecutive_alert_days,
+				expected_output_kwh: Number(expected.toFixed(2)),
+				actual_output_kwh: Number(actual.toFixed(2)),
+				difference_kwh: Number(diff_kwh.toFixed(2)),
+				last_telemetry: latestPred?.updatedAt || todayRow.inverter_last_seen || todayRow.updated_at,
+				status: isReporting ? (diff_kwh < 0 ? "Underperforming" : "Connected") : "Not Connected",
+				connection_status: isReporting ? "Connected" : "Offline",
+				current_generation_kwh: Number(actual.toFixed(2)),
+				predicted_generation_kwh: Number(expected.toFixed(2))
+			};
+
+			if (!isReporting) {
+				connectivityIssues.push(baseSite);
+			} else if (diff_kwh < 0) {
+				activeGenerationIssues.push(baseSite);
+			} else {
+				liveConnectedSites.push(baseSite);
+			}
+		}
+
+		// Update metrics total_sites based on active users
+		metrics.total_sites = activeUserIds.size;
+		metrics.offline_sites = connectivityIssues.length;
+
+		const enrichedConnectivity = await enrichWithUserName(connectivityIssues);
+		const enrichedGeneration = await enrichWithUserName(activeGenerationIssues);
+		const enrichedLive = await enrichWithUserName(liveConnectedSites);
+
+		return res.status(200).json({
+			success: true,
+			data: {
+				metrics,
+				connectivityIssues: enrichedConnectivity,
+				activeGenerationIssues: enrichedGeneration,
+				liveConnectedSites: enrichedLive
+			}
+		});
+	} catch (error) {
+		return respondError(res, "Failed to fetch SOIC dashboard", error);
 	}
-	
-	const enrichAlertsWithKwh = (alertsList) => alertsList.map(a => {
-		const daily = latestByUser.get(String(a.user_id));
-		return {
-			...a,
-			actual_generation_kwh: daily?.actual_generation_kwh,
-			predicted_generation_kwh: daily?.predicted_generation_kwh
-		};
-	});
-
-	const [activeAlertsWithNames, alertsWithNames, enrichedHealthScores, enrichedWatchlist] = await Promise.all([
-		enrichWithUserName(enrichAlertsWithKwh(activeAlerts)),
-		enrichWithUserName(enrichAlertsWithKwh(alerts)),
-		enrichWithUserName(healthScores),
-		enrichWithUserName(
-			Array.from(latestByUser.values())
-				.filter((row) => row.data_source === 'daily_prediction_inverter')
-				.filter((row) => {
-					const baseline = Number(row.site_baseline_ratio || 0);
-					if (!baseline) return row.performance_ratio >= 0.88 && row.performance_ratio < 0.95;
-					return row.performance_ratio < baseline * 0.98 && row.performance_ratio >= baseline * 0.85;
-				})
-				.sort((left, right) => left.performance_ratio - right.performance_ratio)
-				.slice(0, 50)
-		)
-	]);
-
-return res.status(200).json({
-success: true,
-data: {
-metrics,
-activeAlerts: activeAlertsWithNames,
-alerts: alertsWithNames,
-healthScores: enrichedHealthScores,
-watchlist: enrichedWatchlist
-}
-});
-} catch (error) {
-return respondError(res, "Failed to fetch SOIC dashboard", error);
-}
 };
-
-const acknowledgeAlert = async (req, res) => {
-try {
-const { alertId } = req.params;
-if (!mongoose.Types.ObjectId.isValid(alertId)) {
-return res.status(400).json({ success: false, message: "Invalid alert id" });
-}
-const alert = await Alert.findByIdAndUpdate(
-alertId,
-{ status: "ACTIVE" },
-{ returnDocument: "after" }
-).lean();
-return res.status(200).json({ success: true, data: alert });
-} catch (error) {
-return respondError(res, "Failed to acknowledge alert", error);
-}
-};
-
-const resolveAlert = async (req, res) => {
-try {
-const { alertId } = req.params;
-const { reason = "Resolved by operator", notes = "", resolvedBy = "operator" } = req.body || {};
-if (!mongoose.Types.ObjectId.isValid(alertId)) {
-return res.status(400).json({ success: false, message: "Invalid alert id" });
-}
-const alert = await Alert.findByIdAndUpdate(
-alertId,
-{
-status: "RESOLVED",
-resolved_at: new Date(),
-resolution_reason: String(reason),
-resolution_notes: String(notes),
-resolved_by: String(resolvedBy)
-},
-{ returnDocument: "after" }
-).lean();
-return res.status(200).json({ success: true, data: alert });
-} catch (error) {
-return respondError(res, "Failed to resolve alert", error);
-}
-};
-
 module.exports = {
-getAlerts,
-getUserAlerts,
-getActiveAlerts,
-getAlertsByPriority,
-getHealthScores,
-getUserHealthScore,
-getFleetMetrics,
-getSitePerformance,
-getSiteTrends,
-getWatchlist,
-getDashboard,
-acknowledgeAlert,
-resolveAlert
+	getDashboard
 };

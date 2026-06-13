@@ -1,5 +1,7 @@
 const UserData = require("../models/data");
 const MonthlyData = require("../models/monthlydata");
+const DailyPrediction = require("../models/DailyPrediction");
+const SiteDailyPerformance = require("../models/SiteDailyPerformance");
 
 const AIML_API_URL = process.env.AIML_API_URL || "http://127.0.0.1:8000";
 
@@ -174,8 +176,12 @@ const deleteUserData = async (req, res) => {
 			});
 		}
 
-		// Also delete associated monthly data
-		await MonthlyData.deleteOne({ userDataId: userId });
+		// Cascade delete all associated operational and analytics data
+		await Promise.all([
+			MonthlyData.deleteOne({ userDataId: userId }),
+			DailyPrediction.deleteMany({ userId: userId }),
+			SiteDailyPerformance.deleteMany({ user_id: userId })
+		]);
 
 		return res.status(200).json({
 			message: "User data deleted successfully",
