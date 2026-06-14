@@ -7,7 +7,7 @@ import pvlib
 from weather_service import get_today_weather
 
 
-def predict_daily_generation_gti(
+def predict_daily_generation(
     lat,
     lon,
     capacity_kw,
