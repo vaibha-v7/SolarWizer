@@ -5,28 +5,30 @@ import requests
 import pandas as pd
 
 
-def get_today_weather(lat: float, lon: float):
+def get_today_weather(lat: float, lon: float, tilt: float, azimuth: float):
 
     url = "https://api.open-meteo.com/v1/forecast"
 
     params = {
         "latitude": lat,
         "longitude": lon,
+        "tilt": tilt,
+        "azimuth": azimuth,
         "hourly": [
             "temperature_2m",
             "relative_humidity_2m",
             "cloud_cover",
             "wind_speed_10m",
             "shortwave_radiation",
-            "direct_radiation",
-            "diffuse_radiation"
+            "global_tilted_irradiance",
+            "direct_normal_irradiance_instant",
+            "sunshine_duration"
         ],
         "timezone": "auto",
         "forecast_days": 1
     }
 
     response = requests.get(url, params=params)
-
     data = response.json()
 
     hourly = data["hourly"]
@@ -37,9 +39,10 @@ def get_today_weather(lat: float, lon: float):
         "humidity": hourly["relative_humidity_2m"],
         "cloud_cover": hourly["cloud_cover"],
         "wind_speed": hourly["wind_speed_10m"],
-        "ghi": hourly["shortwave_radiation"],      # Global Horizontal Irradiance
-        "dni": hourly["direct_radiation"],         # Direct Normal Irradiance
-        "dhi": hourly["diffuse_radiation"]         # Diffuse Horizontal Irradiance
+        "ghi": hourly["shortwave_radiation"],
+        "gti": hourly["global_tilted_irradiance"],
+        "dni_inst": hourly["direct_normal_irradiance_instant"],
+        "sunshine_duration": hourly["sunshine_duration"]
     })
 
     return df
