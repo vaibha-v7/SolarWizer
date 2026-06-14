@@ -134,6 +134,6 @@ def predict_daily_generation(
     return {
         "daily_energy_kwh": round(float(daily_energy_kwh), 2),
         "peak_power_kw": round(float(ac_power.max()), 2),
-        "max_temperature": round(float(df["temperature"].max()), 2),
+        "avg_temperature": round(float(df["temperature"].max()), 2),
         "avg_cloud_cover": round(float(df["cloud_cover"].mean()), 2)
     }
