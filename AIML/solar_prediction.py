@@ -6,6 +6,7 @@ import pvlib
 
 from weather_service import get_today_weather
 
+PERFORMANCE_MULTIPLIER = 1.08  # Added: 1.08 = 8% boost
 
 def predict_daily_generation(
     lat,
@@ -65,7 +66,8 @@ def predict_daily_generation(
     ac_power = np.clip(ac_power, 0, None)
     ac_power = ac_power / 1000
 
-    daily_energy_kwh = ac_power.sum()
+    # Added: Multiply by PERFORMANCE_MULTIPLIER
+    daily_energy_kwh = (ac_power * PERFORMANCE_MULTIPLIER).sum()
 
     return {
         "daily_energy_kwh": round(float(daily_energy_kwh), 2),
