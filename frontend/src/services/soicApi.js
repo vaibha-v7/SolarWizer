@@ -27,3 +27,13 @@ export const fetchSOICTrends = (userId) => request(`/soic/trends/${userId}`, {},
 export const fetchSOICWatchlist = () => request("/soic/watchlist", {}, "Failed to fetch watchlist");
 export const acknowledgeSOICAlert = (alertId) => request(`/soic/alerts/${alertId}/acknowledge`, { method: "PATCH", headers: { "Content-Type": "application/json" } }, "Failed to acknowledge alert");
 export const resolveSOICAlert = (alertId, payload) => request(`/soic/alerts/${alertId}/resolve`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload || {}) }, "Failed to resolve alert");
+export const fetchSOICResolvedAlerts = () => request("/soic/alerts/resolved", {}, "Failed to fetch resolved alerts");
+
+export const fetchSOICSiteHistory = (siteName, startDate, endDate) => {
+	const params = new URLSearchParams({ siteName });
+	if (startDate) params.append("startDate", startDate);
+	if (endDate) params.append("endDate", endDate);
+	return request(`/soic/alerts/history?${params.toString()}`, {}, "Failed to fetch site history");
+};
+
+export const fetchSOICSites = () => request("/soic/alerts/sites", {}, "Failed to fetch valid sites");

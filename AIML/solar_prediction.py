@@ -6,7 +6,7 @@ import pvlib
 
 from weather_service import get_today_weather
 
-PERFORMANCE_MULTIPLIER = 1.08  # Added: 1.08 = 8% boost
+PERFORMANCE_MULTIPLIER = 1.06  # Added: 1.06 = 6% boost
 
 def predict_daily_generation(
     lat,
