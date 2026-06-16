@@ -17,6 +17,7 @@
     "mongodb": "^7.2.0",
     "mongoose": "^9.5.0",
     "node-cron": "^4.2.1",
+    "nodemailer": "^9.0.0",
     "nodemon": "^3.1.14",
     "pdfkit": "^0.19.1"
   }

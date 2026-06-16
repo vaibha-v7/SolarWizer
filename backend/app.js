@@ -1,11 +1,13 @@
 const express = require("express");
 const dotenv = require("dotenv");
+const path = require("path");
 
-dotenv.config();
+dotenv.config({ path: path.join(__dirname, ".env") });
 
 const userDataRoute = require("./routes/userData.route");
 const dailyPredictionRoute = require("./routes/dailyPrediction.route");
 const soicAlertsRoute = require("./routes/soicAlerts.route");
+const positiveProductionEmailRoute = require("./routes/positiveProductionEmail.route");
 const { initializeDailyPredictionScheduler } = require("./services/dailyPredictionScheduler");
 
 require("./services/db");
@@ -27,6 +29,7 @@ app.use((req, res, next) => {
 app.use("/", userDataRoute);
 app.use("/users", dailyPredictionRoute);
 app.use("/soic", soicAlertsRoute);
+app.use("/notifications", positiveProductionEmailRoute);
 
 app.get("/", (req, res) => {
 	res.send("Backend running");

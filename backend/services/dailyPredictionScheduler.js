@@ -2,6 +2,7 @@ const cron = require("node-cron");
 const DailyPrediction = require("../models/DailyPrediction");
 const UserData = require("../models/data");
 const { getTodayInverterGeneration } = require("./inverterTelemetryService");
+const { sendPositiveProductionEmails } = require("./positiveProductionEmailService");
 
 const AIML_BASE_URL = process.env.AIML_BASE_URL || process.env.AIML_API_URL || "http://127.0.0.1:8000";
 const DAILY_PREDICTION_TIMEZONE = process.env.DAILY_PREDICTION_TIMEZONE || "Asia/Kolkata";
@@ -42,6 +43,7 @@ async function fetchAndStoreDailyPredictions(options = {}) {
 		stored: 0,
 		skipped: 0,
 		failed: 0,
+		emailNotifications: null,
 		errors: []
 	};
 
@@ -151,6 +153,20 @@ async function fetchAndStoreDailyPredictions(options = {}) {
 				result.errors.push({
 					userId: String(user._id),
 					message: err.message
+				});
+			}
+		}
+
+		if (process.env.POSITIVE_PRODUCTION_EMAILS_DISABLED !== "true") {
+			try {
+				result.emailNotifications = await sendPositiveProductionEmails({
+					date: today,
+					userId: options.userId
+				});
+			} catch (emailError) {
+				console.error("[Daily Prediction] Positive production email notification failed:", emailError.message);
+				result.errors.push({
+					message: `Positive production email notification failed: ${emailError.message}`
 				});
 			}
 		}
