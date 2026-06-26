@@ -3,6 +3,7 @@ const DailyPrediction = require("../models/DailyPrediction");
 const MonthlyData = require("../models/monthlydata");
 const UserData = require("../models/data");
 const { detectAnomaly } = require("../utils/anomalyDetector");
+const { updateMonthlyProductionForUserDate } = require("./monthlyProductionService");
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const RETENTION_DAYS = 30;
@@ -183,11 +184,19 @@ const buildSnapshotPayload = async ({ user, monthlyReport, prediction, date, dat
 };
 
 async function upsertSiteDailyPerformance(payload) {
-	return SiteDailyPerformance.findOneAndUpdate(
+	const doc = await SiteDailyPerformance.findOneAndUpdate(
 		{ user_id: payload.user_id, date: payload.date },
 		payload,
 		{ upsert: true, returnDocument: "after" }
 	);
+
+	try {
+		await updateMonthlyProductionForUserDate(payload.user_id, payload.date);
+	} catch (error) {
+		console.error("[SOIC Engine] Failed to update monthly production:", error.message);
+	}
+
+	return doc;
 }
 
 const computeWindows = (ratios = []) => ({

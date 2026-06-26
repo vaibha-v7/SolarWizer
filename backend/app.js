@@ -9,6 +9,7 @@ const dailyPredictionRoute = require("./routes/dailyPrediction.route");
 const soicAlertsRoute = require("./routes/soicAlerts.route");
 const positiveProductionEmailRoute = require("./routes/positiveProductionEmail.route");
 const { initializeDailyPredictionScheduler } = require("./services/dailyPredictionScheduler");
+const { syncAllHistoricalMonthlyProduction } = require("./services/monthlyProductionService");
 
 require("./services/db");
 
@@ -42,4 +43,7 @@ app.listen(PORT, () => {
 	if (process.env.DAILY_PREDICTION_SCHEDULER_DISABLED !== "true") {
 		initializeDailyPredictionScheduler();
 	}
+
+	// Trigger historical sync on startup
+	syncAllHistoricalMonthlyProduction();
 });

@@ -36,6 +36,11 @@ export const fetchDailyPredictionsByUserId = async (userId) => {
 	return parseResponse(response, "Failed to fetch daily predictions");
 };
 
+export const fetchMonthlyProductionByUserId = async (userId) => {
+	const response = await fetch(`${API_BASE_URL}/users/${userId}/monthly-production`);
+	return parseResponse(response, "Failed to fetch monthly production data");
+};
+
 export const triggerDailyPredictionByUserId = async (userId) => {
 	const response = await fetch(`${API_BASE_URL}/users/${userId}/daily-predictions/trigger`, {
 		method: "POST",

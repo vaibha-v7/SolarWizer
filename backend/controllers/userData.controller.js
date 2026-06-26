@@ -2,6 +2,7 @@ const UserData = require("../models/data");
 const MonthlyData = require("../models/monthlydata");
 const DailyPrediction = require("../models/DailyPrediction");
 const SiteDailyPerformance = require("../models/SiteDailyPerformance");
+const UserMonthlyProduction = require("../models/UserMonthlyProduction");
 
 const AIML_API_URL = process.env.AIML_API_URL || "http://127.0.0.1:8000";
 
@@ -180,7 +181,8 @@ const deleteUserData = async (req, res) => {
 		await Promise.all([
 			MonthlyData.deleteOne({ userDataId: userId }),
 			DailyPrediction.deleteMany({ userId: userId }),
-			SiteDailyPerformance.deleteMany({ user_id: userId })
+			SiteDailyPerformance.deleteMany({ user_id: userId }),
+			UserMonthlyProduction.deleteMany({ userId: userId })
 		]);
 
 		return res.status(200).json({
@@ -223,11 +225,72 @@ const updateUserData = async (req, res) => {
 	}
 };
 
+const getMonthlyProductionForUser = async (req, res) => {
+	try {
+		const { userId } = req.params;
+		const user = await UserData.findById(userId);
+		if (!user) {
+			return res.status(404).json({
+				message: "User data not found"
+			});
+		}
+
+		// 1. Fetch static monthly predictions
+		const monthlyReport = await MonthlyData.findOne({ userDataId: userId }).lean();
+		const staticPredictions = monthlyReport?.monthly_energy_kwh || {};
+
+		// 2. Fetch all recorded monthly actual production records
+		const records = await UserMonthlyProduction.find({ userId }).lean();
+
+		// Construct the response data
+		const currentYear = new Date().getFullYear();
+		const yearsSet = new Set(records.map((r) => r.year));
+		yearsSet.add(currentYear);
+		const years = Array.from(yearsSet).sort((a, b) => a - b);
+
+		const result = [];
+		const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+		for (const year of years) {
+			for (const month of MONTHS) {
+				const record = records.find(
+					(r) => r.userId.toString() === userId.toString() && r.year === year && r.month === month
+				);
+
+				const predicted = record ? record.predicted_kwh : (staticPredictions[month] || 0);
+				const actual = record ? record.actual_kwh : 0;
+				const comparison = record ? record.comparison : "N/A";
+				const hasData = record ? (record.daily_values && Object.keys(record.daily_values).length > 0) || record.actual_kwh > 0 : false;
+
+				result.push({
+					year,
+					month,
+					predicted_kwh: Number(predicted.toFixed(2)),
+					actual_kwh: Number(actual.toFixed(2)),
+					comparison,
+					hasData
+				});
+			}
+		}
+
+		return res.status(200).json({
+			message: "Monthly production retrieved successfully",
+			data: result
+		});
+	} catch (error) {
+		return res.status(500).json({
+			message: "Failed to fetch monthly production",
+			error: error.message
+		});
+	}
+};
+
 module.exports = {
 	createUserData,
 	listUserData,
 	getUserDataById,
 	generateSolarReportForUser,
 	deleteUserData,
-	updateUserData
+	updateUserData,
+	getMonthlyProductionForUser
 };
