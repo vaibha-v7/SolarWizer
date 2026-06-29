@@ -88,8 +88,8 @@ const PreviewAlertModal = ({ isOpen, onClose, previewData, siteName, businessDat
 									</div>
 									<div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
 										<p className="text-xs font-semibold text-slate-500 uppercase">Performance</p>
-										<p className={`text-lg font-bold ${previewData.expected_performance >= 90 ? "text-emerald-600" : "text-rose-600"}`}>
-											{previewData.expected_performance}%
+										<p className={`text-lg font-bold ${previewData.expected_performance === null ? "text-slate-500" : previewData.expected_performance >= 90 ? "text-emerald-600" : "text-rose-600"}`}>
+											{previewData.expected_performance === null ? "N/A" : `${previewData.expected_performance}%`}
 										</p>
 									</div>
 									<div className="bg-slate-50 p-3 rounded-lg border border-slate-100">

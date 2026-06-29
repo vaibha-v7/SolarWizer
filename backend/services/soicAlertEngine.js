@@ -98,31 +98,6 @@ const finalizePredictionForEvaluation = async ({ prediction, pipelineId, session
 const resolveAlert = async (alert, state, resolvedBy = "System", options = {}) => {
 	const session = options.session || null;
 
-	alert.status = "RESOLVED";
-	alert.resolved_at = new Date();
-	alert.resolved_by = resolvedBy;
-	await saveWithSession(alert, session);
-
-	const incident_start_date = new Date(alert.created_at).toISOString().split("T")[0];
-	const incident_end_date = alert.resolved_at.toISOString().split("T")[0];
-	const historyWindow = clonePerformanceWindow(state);
-
-	const history = new AlertHistory({
-		alert_id: alert._id,
-		user_id: alert.user_id,
-		site_id: alert.site_id,
-		site_name: alert.site_name,
-		incident_id: generateIncidentId(),
-		incident_start_date,
-		incident_end_date,
-		highest_severity_reached: alert.severity,
-		total_days_active: alert.consecutive_days,
-		status: "RESOLVED",
-		performance_window: historyWindow,
-		notes: alert.notes,
-		resolved_at: alert.resolved_at,
-		resolved_by: alert.resolved_by
-	});
 	const previewMode = options.previewMode || false;
 
 	if (!previewMode) {
@@ -242,7 +217,7 @@ const evaluateSite = async ({ user, date, pipelineId, session, forceReevaluate =
 	const predictedKwh = Number(prediction.predicted_kwh) || 0;
 	const actualStr = prediction.inverter_real_time_kwh;
 
-	if (actualStr === "N/A" || actualStr === null || actualStr === undefined || String(actualStr).trim() === "") {
+	if (actualStr === "N/A" || actualStr === null || actualStr === undefined || String(actualStr).trim() === "" || Number(actualStr) === 0) {
 		if (!state.offline_since) {
 			state.offline_since = new Date();
 		}
@@ -252,7 +227,7 @@ const evaluateSite = async ({ user, date, pipelineId, session, forceReevaluate =
 			predicted_kwh: predictedKwh,
 			actual_kwh: 0,
 			difference_kwh: -predictedKwh,
-			performance_percent: 0
+			performance_percent: null
 		});
 
 		let alert = await withSession(
@@ -272,7 +247,7 @@ const evaluateSite = async ({ user, date, pipelineId, session, forceReevaluate =
 				predicted_kwh: predictedKwh,
 				actual_kwh: 0,
 				difference_kwh: -predictedKwh,
-				performance_percent: 0,
+				performance_percent: null,
 				consecutive_days: daysActive
 			});
 			if (!previewMode) {
@@ -287,7 +262,7 @@ const evaluateSite = async ({ user, date, pipelineId, session, forceReevaluate =
 				actual_kwh: 0,
 				expected_action: "CREATE_ALERT", 
 				expected_severity: "OFFLINE", 
-				expected_performance: 0, 
+				expected_performance: null, 
 				difference_kwh: -predictedKwh,
 				consecutive_days: daysActive 
 			};
@@ -295,7 +270,7 @@ const evaluateSite = async ({ user, date, pipelineId, session, forceReevaluate =
 			alert.predicted_kwh = predictedKwh;
 			alert.actual_kwh = 0;
 			alert.difference_kwh = -predictedKwh;
-			alert.performance_percent = 0;
+			alert.performance_percent = null;
 			if (alert.consecutive_days !== daysActive) {
 				alert.consecutive_days = daysActive;
 				if (!previewMode) await saveWithSession(alert, session);
@@ -306,7 +281,7 @@ const evaluateSite = async ({ user, date, pipelineId, session, forceReevaluate =
 				actual_kwh: 0,
 				expected_action: "UPDATE_ALERT", 
 				expected_severity: "OFFLINE", 
-				expected_performance: 0, 
+				expected_performance: null, 
 				difference_kwh: -predictedKwh,
 				consecutive_days: daysActive 
 			};

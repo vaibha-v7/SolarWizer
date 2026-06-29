@@ -91,11 +91,19 @@ router.post("/:userId/daily-predictions/trigger", async (req, res) => {
 			});
 		}
 
-		if (result.stored === 0 && result.updated === 0) {
+		if (result.failed > 0 && result.stored === 0 && result.updated === 0) {
 			return res.status(502).json({
 				success: false,
-				message: result.errors[0]?.message || "Daily prediction could not be stored",
+				message: result.errors[0]?.message || "Daily prediction could not be fetched",
 				data: result
+			});
+		}
+
+		if (result.stored === 0 && result.updated === 0) {
+			return res.status(200).json({
+				success: true,
+				data: result,
+				message: result.warnings[0]?.message || "No new prediction was stored"
 			});
 		}
 

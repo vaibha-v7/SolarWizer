@@ -4,6 +4,7 @@ const { buildAlertReportWorkbook } = require("../services/excelAlertService");
 const Alert = require("../models/Alert");
 const AlertHistory = require("../models/AlertHistory");
 const SiteMonitoringState = require("../models/SiteMonitoringState");
+const DailyPrediction = require("../models/DailyPrediction");
 const { resolveAlert: engineResolveAlert, previewSiteEvaluation, evaluateAllSites } = require("../services/soicAlertEngine");
 const { getOperationalHealth: readOperationalHealth } = require("../services/pipelineTelemetryService");
 
@@ -93,34 +94,85 @@ exports.getDashboard = async (req, res) => {
 
 		const active_alerts = populatedAlerts.filter(a => ["YELLOW", "ORANGE", "RED"].includes(a.severity));
 		const critical_sites = populatedAlerts.filter(a => a.severity === "CRITICAL");
-		const offline_sites = populatedAlerts.filter(a => a.severity === "OFFLINE");
+		
+		const latestPredictions = await DailyPrediction.aggregate([
+			{ $match: { userId: { $in: activeUsers.map(u => u._id) } } },
+			{ $sort: { date: -1 } },
+			{ $group: { _id: "$userId", latest: { $first: "$$ROOT" } } }
+		]);
+		const predictionsMap = latestPredictions.reduce((acc, curr) => {
+			acc[curr._id.toString()] = curr.latest;
+			return acc;
+		}, {});
 
-		// Derived Active Sites
 		const active_sites = [];
+		const offline_sites = [];
+
 		for (const user of activeUsers) {
-			const hasOpenAlert = validOpenAlerts.some(a => a.user_id.toString() === user._id.toString());
-			if (!hasOpenAlert) {
-				const state = statesMap[user._id.toString()];
-				let latestPerfStr = "N/A";
-				let statusStr = "Healthy";
-				
-				if (state && state.performance_window && state.performance_window.length > 0) {
-					const numericPerf = state.performance_window[state.performance_window.length - 1].performance_percent;
-					latestPerfStr = numericPerf.toFixed(1) + "%";
-					if (numericPerf < 90) {
-						statusStr = "Warning";
-					}
+			const userIdStr = user._id.toString();
+			const latestPred = predictionsMap[userIdStr];
+			const actualStr = latestPred ? latestPred.inverter_real_time_kwh : null;
+			
+			const isOffline = latestPred && (
+				actualStr === "N/A" || 
+				actualStr === null || 
+				actualStr === undefined || 
+				String(actualStr).trim() === "" || 
+				Number(actualStr) === 0
+			);
+
+			const userAlerts = populatedAlerts.filter(a => a.user_id.toString() === userIdStr);
+			const hasGenerationAlert = userAlerts.some(a => ["YELLOW", "ORANGE", "RED", "CRITICAL"].includes(a.severity));
+			const existingOfflineAlert = userAlerts.find(a => a.severity === "OFFLINE");
+
+			if (isOffline) {
+				if (existingOfflineAlert) {
+					offline_sites.push(existingOfflineAlert);
+				} else {
+					const state = statesMap[userIdStr];
+					offline_sites.push({
+						_id: `live-offline-${userIdStr}`,
+						user_id: user._id,
+						site_id: user.siteId || userIdStr,
+						site_name: user.name,
+						severity: "OFFLINE",
+						status: "Not Connected",
+						alert_days_10d: 0,
+						consecutive_days: 0,
+						last_telemetry: latestPred?.created_at || new Date(),
+						performance_window: [],
+						performance_percent: null
+					});
 				}
-				
-				active_sites.push({
-					site_id: user._id.toString(),
-					site_name: user.name,
-					status: statusStr,
-					last_evaluated_date: state && state.last_evaluated_date ? state.last_evaluated_date : "N/A",
-					performance_percent: latestPerfStr
-				});
+			} else {
+				if (!hasGenerationAlert) {
+					const state = statesMap[userIdStr];
+					let latestPerfStr = "N/A";
+					let statusStr = "Healthy";
+					
+					if (state && state.performance_window && state.performance_window.length > 0) {
+						const numericPerf = state.performance_window[state.performance_window.length - 1].performance_percent;
+						if (numericPerf === null) {
+							latestPerfStr = "N/A";
+						} else {
+							latestPerfStr = numericPerf.toFixed(1) + "%";
+							if (numericPerf < 90) {
+								statusStr = "Warning";
+							}
+						}
+					}
+					
+					active_sites.push({
+						site_id: userIdStr,
+						site_name: user.name,
+						status: statusStr,
+						last_evaluated_date: state && state.last_evaluated_date ? state.last_evaluated_date : "N/A",
+						performance_percent: latestPerfStr
+					});
+				}
 			}
 		}
+
 
 		res.status(200).json({
 			success: true,
