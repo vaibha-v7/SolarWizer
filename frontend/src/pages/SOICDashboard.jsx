@@ -59,7 +59,7 @@ const ActiveSitesTable = ({ sites }) => {
 				<p className="text-xs text-slate-500">Showing {sites.length} operational sites</p>
 			</div>
 			<div className="overflow-x-auto">
-				<table className="w-full text-left text-sm text-slate-700">
+				<table className="w-full text-left text-sm text-slate-700 min-w-[500px]">
 					<thead className="bg-slate-50/50 border-b border-slate-200/70 text-[11px] uppercase tracking-wider font-semibold text-slate-500">
 						<tr>
 							<th className="px-5 py-4">Site Name</th>
@@ -82,7 +82,7 @@ const ActiveSitesTable = ({ sites }) => {
 									</span>
 								</td>
 								<td className="px-5 py-4 text-slate-500 text-[13px]">{site.last_evaluated_date}</td>
-								<td className="px-5 py-4 text-right font-mono text-[13px] text-slate-600">{site.performance_percent}</td>
+								<td className="px-5 py-4 text-right font-mono text-[13px] text-slate-600">{site.performance_percent === null ? "N/A" : `${site.performance_percent}%`}</td>
 							</tr>
 						))}
 					</tbody>
@@ -114,7 +114,7 @@ const AlertsTable = ({ alerts, onAcknowledge, onResolve, isResolvedTab = false }
 				<p className="text-xs text-slate-500">Showing {alerts.length} records</p>
 			</div>
 			<div className="overflow-x-auto">
-				<table className="w-full text-left text-sm text-slate-700">
+				<table className="w-full text-left text-sm text-slate-700 min-w-[500px]">
 					<thead className="bg-slate-50/50 border-b border-slate-200/70 text-[11px] uppercase tracking-wider font-semibold text-slate-500">
 						<tr>
 							<th className="px-5 py-4">Site Name</th>
@@ -137,7 +137,7 @@ const AlertsTable = ({ alerts, onAcknowledge, onResolve, isResolvedTab = false }
 									{!isResolvedTab && (
 										<td className="px-5 py-4 text-xs font-semibold text-slate-600">{alert.status}</td>
 									)}
-									<td className="px-5 py-4 text-right font-mono text-[13px] text-slate-500">{alert.performance_percent?.toFixed(1)}%</td>
+									<td className="px-5 py-4 text-right font-mono text-[13px] text-slate-500">{alert.performance_percent === null ? "N/A" : `${alert.performance_percent?.toFixed(1)}%`}</td>
 									<td className="px-5 py-4 text-right space-x-2">
 										<button 
 											onClick={() => toggleRow(alert._id)}
@@ -170,7 +170,8 @@ const AlertsTable = ({ alerts, onAcknowledge, onResolve, isResolvedTab = false }
 												<div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
 													<div className="font-semibold text-[11px] uppercase tracking-wider text-slate-500 mb-3">Performance Evidence Log</div>
 													{alert.performance_window && alert.performance_window.length > 0 ? (
-														<table className="w-full text-left font-mono text-[12px] text-slate-600">
+														<div className="overflow-x-auto">
+															<table className="w-full text-left font-mono text-[12px] text-slate-600 min-w-[500px]">
 															<thead className="border-b border-slate-100 text-slate-400">
 																<tr>
 																	<th className="pb-2 font-medium">Date</th>
@@ -187,11 +188,12 @@ const AlertsTable = ({ alerts, onAcknowledge, onResolve, isResolvedTab = false }
 																		<td className="py-2.5 text-right">{ev.predicted_kwh?.toFixed(2)}</td>
 																		<td className="py-2.5 text-right">{ev.actual_kwh?.toFixed(2)}</td>
 																		<td className="py-2.5 text-right text-rose-500">{ev.difference_kwh?.toFixed(2)}</td>
-																		<td className="py-2.5 text-right font-semibold text-slate-700">{ev.performance_percent?.toFixed(1)}%</td>
+																		<td className="py-2.5 text-right font-semibold text-slate-700">{ev.performance_percent === null ? "N/A" : `${ev.performance_percent?.toFixed(1)}%`}</td>
 																	</tr>
 																))}
 															</tbody>
 														</table>
+														</div>
 													) : (
 														<div className="text-slate-400 text-sm italic">No evidence recorded for this incident.</div>
 													)}
@@ -406,7 +408,7 @@ const AlertReportsView = () => {
 						</div>
 						{reportData.active_incidents && reportData.active_incidents.length > 0 ? (
 							<div className="overflow-x-auto">
-								<table className="w-full text-left text-sm text-slate-700">
+								<table className="w-full text-left text-sm text-slate-700 min-w-[500px]">
 									<thead className="bg-slate-50/40 border-b border-slate-100 text-[11px] uppercase tracking-wider font-semibold text-slate-500">
 										<tr>
 											<th className="px-5 py-3">Severity</th>
@@ -421,7 +423,7 @@ const AlertReportsView = () => {
 												<td className="px-5 py-3"><SeverityBadge severity={inc.severity} /></td>
 												<td className="px-5 py-3 font-semibold text-xs text-slate-600">{inc.status}</td>
 												<td className="px-5 py-3 text-right font-mono text-[13px] font-semibold text-slate-900">{inc.consecutive_days || inc.total_days_active || 0}</td>
-												<td className="px-5 py-3 text-right font-mono text-[13px] text-slate-600">{inc.performance_percent?.toFixed(1) || "0.0"}%</td>
+												<td className="px-5 py-3 text-right font-mono text-[13px] text-slate-600">{inc.performance_percent === null ? "N/A" : `${inc.performance_percent?.toFixed(1)}%`}</td>
 											</tr>
 										))}
 									</tbody>
@@ -684,6 +686,48 @@ const SOICDashboard = () => {
 					)}
 				</div>
 			</header>
+
+			{/* Mobile Navigation Tabs */}
+			<div className="lg:hidden sticky top-[60px] z-20 border-b border-slate-200/70 bg-white/90 px-3 py-3 backdrop-blur-xl overflow-x-auto">
+				<div className="flex gap-2 min-w-max">
+					<button 
+						onClick={() => setActiveTab("active_alerts")}
+						className={`px-4 py-2 rounded-full text-sm font-semibold transition ${activeTab === "active_alerts" ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+					>
+						Active Alerts
+					</button>
+					<button 
+						onClick={() => setActiveTab("critical_sites")}
+						className={`px-4 py-2 rounded-full text-sm font-semibold transition ${activeTab === "critical_sites" ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+					>
+						Critical Sites
+					</button>
+					<button 
+						onClick={() => setActiveTab("offline_sites")}
+						className={`px-4 py-2 rounded-full text-sm font-semibold transition ${activeTab === "offline_sites" ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+					>
+						Offline Sites
+					</button>
+					<button 
+						onClick={() => setActiveTab("active_sites")}
+						className={`px-4 py-2 rounded-full text-sm font-semibold transition ${activeTab === "active_sites" ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+					>
+						Active Sites
+					</button>
+					<button 
+						onClick={() => setActiveTab("resolved_alerts")}
+						className={`px-4 py-2 rounded-full text-sm font-semibold transition ${activeTab === "resolved_alerts" ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+					>
+						Resolved
+					</button>
+					<button 
+						onClick={() => setActiveTab("alert_reports")}
+						className={`px-4 py-2 rounded-full text-sm font-semibold transition ${activeTab === "alert_reports" ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+					>
+						Reports
+					</button>
+				</div>
+			</div>
 
 			{/* Main Content Area pushed right for the new 72 w sidebar (18rem) -> pl-[19.5rem] */}
 			<main className="px-3 py-5 sm:px-4 sm:py-6 lg:pl-[19.5rem] lg:pr-8">

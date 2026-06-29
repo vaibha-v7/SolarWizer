@@ -44,11 +44,12 @@ const SOICCriticalSites = ({ alerts = [], fullPage = false }) => {
 		.slice(0, fullPage ? alerts.length : 5);
 
 	return (
-		<div className="rounded-2xl border border-rose-200/80 bg-white/88 shadow-sm overflow-hidden w-full overflow-x-auto">
+		<div className="rounded-2xl border border-rose-200/80 bg-white/88 shadow-sm overflow-hidden w-full">
 			<div className="border-b border-rose-200/80 bg-rose-50/50 px-5 py-4">
 				<h2 className="text-sm font-bold text-rose-900 tracking-wide uppercase">CRITICAL SITES</h2>
 				<p className="text-xs text-rose-600/80 mt-1">Sites in a critical state requiring immediate action.</p>
 			</div>
+			<div className="w-full overflow-x-auto">
 			<table className="w-full text-left border-collapse min-w-[800px]">
 				<thead>
 					<tr className="border-b border-rose-100 bg-rose-50/30">
@@ -103,6 +104,7 @@ const SOICCriticalSites = ({ alerts = [], fullPage = false }) => {
 					)}
 				</tbody>
 			</table>
+			</div>
 		</div>
 	);
 };

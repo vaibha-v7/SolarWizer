@@ -325,7 +325,7 @@ const MonthlyLineChartWithTable = ({ predictions = {}, actuals = [] }) => {
 				<div className="space-y-4">
 					{/* Monthly Comparison Table */}
 					<div className="overflow-x-auto rounded-lg border border-slate-200">
-						<table className="w-full text-sm">
+						<table className="w-full text-sm min-w-[700px]">
 							<thead>
 								<tr className="bg-slate-50 border-b border-slate-200 text-slate-700">
 									<th className="px-4 py-3 text-left font-semibold">Month</th>

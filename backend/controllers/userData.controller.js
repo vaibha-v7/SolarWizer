@@ -8,15 +8,24 @@ const Alert = require("../models/Alert");
 const AlertHistory = require("../models/AlertHistory");
 
 const AIML_API_URL = process.env.AIML_API_URL || "http://127.0.0.1:8000";
-
-
+const { refreshSolarReportForUser: executeAnalyticsRefresh } = require("../services/analyticsRefreshService");
 
 const createUserData = async (req, res) => {
 	try {
 		const createdRecord = await UserData.create(req.body);
+		
+		let analyticsGenerated = false;
+		try {
+			await executeAnalyticsRefresh(createdRecord._id.toString());
+			analyticsGenerated = true;
+		} catch (analyticsError) {
+			console.error("[User Creation] Failed to auto-generate analytics for new user:", analyticsError.message);
+		}
+
 		return res.status(201).json({
 			message: "User data created successfully",
-			data: createdRecord
+			data: createdRecord,
+			analyticsGenerated
 		});
 	} catch (error) {
 		return res.status(400).json({
@@ -63,8 +72,6 @@ const getUserDataById = async (req, res) => {
 		});
 	}
 };
-
-const { refreshSolarReportForUser: executeAnalyticsRefresh } = require("../services/analyticsRefreshService");
 
 const getSolarReportForUser = async (req, res) => {
 	try {

@@ -203,52 +203,74 @@ const UserReportPage = () => {
 					<h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">User Report Overview</h1>
 				</div>
 
-				<div className="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 lg:gap-3">
-					<button 
-						type="button" 
-						onClick={() => navigate("/")}
-						className="w-full rounded-xl border border-slate-400/60 bg-white px-4 py-2 text-sm font-semibold text-slate-800 transition hover:-translate-y-0.5 hover:shadow-md"
-					>
-						Back to Dashboard
-					</button>
-					<button 
-						type="button" 
-						onClick={handleRefreshReport}
-						disabled={refreshing}
-						className="w-full rounded-xl bg-gradient-to-r from-emerald-600 to-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:shadow-lg disabled:opacity-60"
-					>
-						{refreshing ? "Refreshing..." : "Refresh report"}
-					</button>
-					{!loading && !error && report && (
+				{loading && (
+					<div className="flex flex-col items-center justify-center py-20 text-blue-600">
+						<svg className="h-10 w-10 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+							<circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+							<path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+						</svg>
+						<p className="mt-4 text-sm font-semibold text-slate-600">Loading analytical report...</p>
+					</div>
+				)}
+
+				{!loading && error && (
+					<div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-5 shadow-sm text-center">
+						<p className="text-sm font-semibold text-rose-700">{error}</p>
 						<button 
 							type="button" 
-							onClick={() => exportReportToExcel(selectedReportData, user, {
-								dailyPredictions,
-								source: reportSource
-							})}
-							className="w-full rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:shadow-lg"
+							onClick={() => navigate("/")}
+							className="mt-4 rounded-xl border border-slate-400/60 bg-white px-6 py-2 text-sm font-semibold text-slate-800 transition hover:-translate-y-0.5 hover:shadow-md"
 						>
-							Download Report
+							Back to Dashboard
 						</button>
-					)}
-				</div>
-
-				{loading && <p className="px-1 py-3 text-sm font-semibold text-blue-700">Loading report...</p>}
-				{error && <p className="px-1 py-3 text-sm font-semibold text-rose-700">{error}</p>}
-				{refreshMetadata && (
-					<div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 shadow-sm">
-						<p className="text-sm font-semibold text-emerald-800">Report refreshed successfully</p>
-						<div className="mt-1 flex flex-wrap gap-4 text-xs text-emerald-700">
-							<span>Last refreshed: {new Date(refreshMetadata.refreshed_at).toLocaleString()}</span>
-							<span>Model: {refreshMetadata.prediction_model}</span>
-							<span>Months Updated: {refreshMetadata.months_updated}</span>
-							<span>Unchanged: {refreshMetadata.months_unchanged}</span>
-						</div>
 					</div>
 				)}
 
 				{!loading && !error && (
-					<div className="grid items-start gap-4 lg:grid-cols-[320px_minmax(0,1fr)] xl:grid-cols-[340px_minmax(0,1fr)]">
+					<>
+						<div className="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 lg:gap-3">
+							<button 
+								type="button" 
+								onClick={() => navigate("/")}
+								className="w-full rounded-xl border border-slate-400/60 bg-white px-4 py-2 text-sm font-semibold text-slate-800 transition hover:-translate-y-0.5 hover:shadow-md"
+							>
+								Back to Dashboard
+							</button>
+							<button 
+								type="button" 
+								onClick={handleRefreshReport}
+								disabled={refreshing}
+								className="w-full rounded-xl bg-gradient-to-r from-emerald-600 to-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:shadow-lg disabled:opacity-60"
+							>
+								{refreshing ? "Refreshing..." : "Refresh report"}
+							</button>
+							{report && (
+								<button 
+									type="button" 
+									onClick={() => exportReportToExcel(selectedReportData, user, {
+										dailyPredictions,
+										source: reportSource
+									})}
+									className="w-full rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:shadow-lg"
+								>
+									Download Report
+								</button>
+							)}
+						</div>
+
+						{refreshMetadata && (
+							<div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 shadow-sm">
+								<p className="text-sm font-semibold text-emerald-800">Report refreshed successfully</p>
+								<div className="mt-1 flex flex-wrap gap-4 text-xs text-emerald-700">
+									<span>Last refreshed: {new Date(refreshMetadata.refreshed_at).toLocaleString()}</span>
+									<span>Model: {refreshMetadata.prediction_model}</span>
+									<span>Months Updated: {refreshMetadata.months_updated}</span>
+									<span>Unchanged: {refreshMetadata.months_unchanged}</span>
+								</div>
+							</div>
+						)}
+
+						<div className="grid items-start gap-4 lg:grid-cols-[320px_minmax(0,1fr)] xl:grid-cols-[340px_minmax(0,1fr)]">
 						<UserProfileCard user={user} />
 						<div className="space-y-4">
 							<div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm sm:flex-row sm:items-center sm:justify-between">
@@ -326,6 +348,7 @@ const UserReportPage = () => {
 							)}
 						</div>
 					</div>
+					</>
 				)}
 			</div>
 
