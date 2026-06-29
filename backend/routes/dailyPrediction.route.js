@@ -1,6 +1,8 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const DailyPrediction = require("../models/DailyPrediction");
+const { runManualPredictionFetch } = require("../services/manualFetchService");
+const { getDateDaysAgo, getTodayDateString } = require("../utils/dateUtils");
 
 const router = express.Router();
 
@@ -25,12 +27,8 @@ router.get("/:userId/daily-predictions", async (req, res) => {
 			});
 		}
 
-		const today = new Date();
-		const sixDaysAgo = new Date();
-		sixDaysAgo.setDate(today.getDate() - 5);
-
-		const todayStr = today.toISOString().split("T")[0];
-		const sixDaysAgoStr = sixDaysAgo.toISOString().split("T")[0];
+		const todayStr = getTodayDateString();
+		const sixDaysAgoStr = getDateDaysAgo(5);
 
 		const predictions = await DailyPrediction.find({
 			userId,
@@ -49,7 +47,7 @@ router.get("/:userId/daily-predictions", async (req, res) => {
 			peak_power_kw: formatNumber(pred.peak_power_kw),
 			avg_temperature: formatNumber(pred.avg_temperature),
 			avg_cloud_cover: formatNumber(pred.avg_cloud_cover),
-			difference_kwh: Number.isFinite(Number(pred.difference_kwh)) ? Number(Number(pred.difference_kwh).toFixed(2)) : null,
+			difference_kwh: pred.difference_kwh != null && Number.isFinite(Number(pred.difference_kwh)) ? Number(Number(pred.difference_kwh).toFixed(2)) : null,
 			comparison: pred.comparison ?? "N/A"
 		}));
 
@@ -71,8 +69,7 @@ router.get("/:userId/daily-predictions", async (req, res) => {
 
 /**
  * POST /users/:userId/daily-predictions/trigger
- * Manual trigger for testing the daily prediction fetch
- * (Optional - for debugging/testing purposes)
+ * Manual monitoring fetch. This endpoint must never evaluate or modify alerts.
  */
 router.post("/:userId/daily-predictions/trigger", async (req, res) => {
 	try {
@@ -85,9 +82,7 @@ router.post("/:userId/daily-predictions/trigger", async (req, res) => {
 			});
 		}
 
-		const { triggerDailyPredictionFetch } = require("../services/dailyPredictionScheduler");
-
-		const result = await triggerDailyPredictionFetch({ userId });
+		const result = await runManualPredictionFetch({ userId });
 
 		if (result.totalUsers === 0) {
 			return res.status(404).json({
@@ -96,7 +91,7 @@ router.post("/:userId/daily-predictions/trigger", async (req, res) => {
 			});
 		}
 
-		if (result.stored === 0) {
+		if (result.stored === 0 && result.updated === 0) {
 			return res.status(502).json({
 				success: false,
 				message: result.errors[0]?.message || "Daily prediction could not be stored",
@@ -107,7 +102,7 @@ router.post("/:userId/daily-predictions/trigger", async (req, res) => {
 		res.status(200).json({
 			success: true,
 			data: result,
-			message: "Daily prediction fetch triggered successfully"
+			message: "Manual daily prediction fetch completed without alert evaluation"
 		});
 	} catch (err) {
 		console.error("[Daily Predictions Trigger] Error:", err.message);

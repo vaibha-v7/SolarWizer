@@ -21,7 +21,8 @@ export const fetchSOICAlertsByPriority = (priority) => request(`/soic/alerts/pri
 export const fetchSOICHealthScores = () => request("/soic/health-scores", {}, "Failed to fetch health scores");
 export const fetchSOICUserHealthScore = (userId) => request(`/soic/health-scores/user/${userId}`, {}, "Failed to fetch user health score");
 export const fetchSOICFleetMetrics = () => request("/soic/fleet-metrics", {}, "Failed to fetch fleet metrics");
-export const fetchSOICDashboard = (refresh = false) => request(`/soic/dashboard${refresh ? "?refresh=true" : ""}`, {}, "Failed to fetch SOIC dashboard");
+export const fetchSOICDashboard = () => request("/soic/dashboard", {}, "Failed to fetch SOIC dashboard");
+export const fetchSOICPreviewAlert = (userId, date) => request(`/soic/alerts/preview/${userId}?date=${date}`, {}, "Failed to fetch preview alert");
 export const fetchSOICPerformance = (userId) => request(`/soic/performance/${userId}`, {}, "Failed to fetch performance history");
 export const fetchSOICTrends = (userId) => request(`/soic/trends/${userId}`, {}, "Failed to fetch trends");
 export const fetchSOICWatchlist = () => request("/soic/watchlist", {}, "Failed to fetch watchlist");

@@ -99,17 +99,119 @@ async function updateMonthlyProductionForUserDate(userId, dateStr) {
  */
 async function syncAllHistoricalMonthlyProduction() {
 	try {
-		console.log("[Monthly Production] Starting historical data sync...");
+		console.log("[Monthly Production] Historical Sync Started");
+		const startMs = Date.now();
 		
-		// Query all daily performances sorted by date ascending
-		const performances = await SiteDailyPerformance.find().sort({ date: 1 }).lean();
-		console.log(`[Monthly Production] Found ${performances.length} daily performance records to sync.`);
+		const performances = await SiteDailyPerformance.find().lean();
+		console.log(`[Monthly Production] Daily Records Read: ${performances.length}`);
 
+		const grouped = {};
+		const userIds = new Set();
+		
 		for (const perf of performances) {
-			await updateMonthlyProductionForUserDate(perf.user_id, perf.date);
+			const parts = perf.date.split("-");
+			if (parts.length !== 3) continue;
+			
+			const year = parseInt(parts[0], 10);
+			const monthIndex = parseInt(parts[1], 10) - 1;
+			if (Number.isNaN(year) || Number.isNaN(monthIndex) || monthIndex < 0 || monthIndex > 11) {
+				continue;
+			}
+			const monthName = MONTHS[monthIndex];
+			
+			const uid = perf.user_id.toString();
+			userIds.add(uid);
+			
+			if (!grouped[uid]) grouped[uid] = {};
+			if (!grouped[uid][year]) grouped[uid][year] = {};
+			if (!grouped[uid][year][monthName]) {
+				grouped[uid][year][monthName] = { daily_values: {} };
+			}
+			
+			grouped[uid][year][monthName].daily_values[perf.date] = {
+				actual_generation_kwh: perf.actual_generation_kwh || 0,
+				predicted_generation_kwh: perf.predicted_generation_kwh || 0
+			};
 		}
 
-		console.log("[Monthly Production] Historical data sync completed successfully.");
+		const monthlyReports = await MonthlyData.find({ userDataId: { $in: Array.from(userIds) } }).lean();
+		const reportMap = {};
+		for (const r of monthlyReports) {
+			reportMap[r.userDataId.toString()] = r;
+		}
+
+		const existingRecords = await UserMonthlyProduction.find({ userId: { $in: Array.from(userIds) } }).lean();
+		const existingMap = {};
+		for (const r of existingRecords) {
+			const uid = r.userId.toString();
+			if (!existingMap[uid]) existingMap[uid] = {};
+			if (!existingMap[uid][r.year]) existingMap[uid][r.year] = {};
+			existingMap[uid][r.year][r.month] = r;
+		}
+
+		const bulkOps = [];
+		let aggregatesCount = 0;
+
+		for (const uid of Object.keys(grouped)) {
+			const report = reportMap[uid];
+			for (const yearStr of Object.keys(grouped[uid])) {
+				const year = parseInt(yearStr, 10);
+				for (const month of Object.keys(grouped[uid][year])) {
+					const data = grouped[uid][year][month];
+					aggregatesCount++;
+					
+					const predictedMonthlyKwh = report?.monthly_energy_kwh?.[month] || 0;
+					
+					const existingDaily = existingMap[uid]?.[year]?.[month]?.daily_values || {};
+					const mergedDaily = { ...existingDaily, ...data.daily_values };
+					
+					let totalActual = 0;
+					let hasAnyData = false;
+					
+					for (const dateKey of Object.keys(mergedDaily)) {
+						totalActual += mergedDaily[dateKey].actual_generation_kwh || 0;
+						hasAnyData = true;
+					}
+					
+					const actual_kwh = Number(totalActual.toFixed(2));
+					const predicted_kwh = Number(predictedMonthlyKwh.toFixed(2));
+					
+					let comparison = "N/A";
+					if (hasAnyData) {
+						const diff = Number((actual_kwh - predicted_kwh).toFixed(2));
+						if (diff > 0) comparison = "greater";
+						else if (diff < 0) comparison = "lesser";
+						else comparison = "equal";
+					}
+					
+					bulkOps.push({
+						updateOne: {
+							filter: { userId: uid, year, month },
+							update: {
+								$set: {
+									actual_kwh,
+									predicted_kwh,
+									comparison,
+									daily_values: mergedDaily
+								}
+							},
+							upsert: true
+						}
+					});
+				}
+			}
+		}
+
+		console.log(`[Monthly Production] Monthly Aggregates Built: ${aggregatesCount}`);
+
+		if (bulkOps.length > 0) {
+			await UserMonthlyProduction.bulkWrite(bulkOps);
+		}
+		
+		const durationMs = Date.now() - startMs;
+		console.log(`[Monthly Production] Bulk Writes Executed: ${bulkOps.length}`);
+		console.log(`[Monthly Production] Completed in ${durationMs} ms`);
+
 	} catch (error) {
 		console.error("[Monthly Production] Historical data sync failed:", error.message);
 	}

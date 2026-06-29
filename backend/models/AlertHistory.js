@@ -29,4 +29,17 @@ const alertHistorySchema = new mongoose.Schema(
 	}
 );
 
+const immutableHistoryError = new Error("AlertHistory is immutable and cannot be modified after creation.");
+
+alertHistorySchema.pre("save", function preventHistoryDocumentUpdate(next) {
+	if (!this.isNew) return next(immutableHistoryError);
+	return next();
+});
+
+["updateOne", "updateMany", "findOneAndUpdate", "deleteOne", "deleteMany", "findOneAndDelete"].forEach((hook) => {
+	alertHistorySchema.pre(hook, function preventHistoryMutation(next) {
+		return next(immutableHistoryError);
+	});
+});
+
 module.exports = mongoose.model("AlertHistory", alertHistorySchema);

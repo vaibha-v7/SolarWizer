@@ -4,13 +4,16 @@ import DailyPredictionTable from "../components/DailyPredictionTable";
 import MonthlyLineChartWithTable from "../components/MonthlyLineChartWithTable";
 import StatsStrip from "../components/StatsStrip";
 import UserProfileCard from "../components/UserProfileCard";
+import PreviewAlertModal from "../components/PreviewAlertModal";
 import {
 	fetchDailyPredictionsByUserId,
 	fetchMonthlyProductionByUserId,
 	fetchSolarReportByUserId,
+	refreshSolarReportByUserId,
 	fetchUserById,
 	triggerDailyPredictionByUserId
 } from "../services/api";
+import { fetchSOICPreviewAlert } from "../services/soicApi";
 import { exportReportToExcel } from "../utils/exportToExcel";
 
 const UserReportPage = () => {
@@ -27,6 +30,10 @@ const UserReportPage = () => {
 	const [error, setError] = useState("");
 	const [dailyPredictionError, setDailyPredictionError] = useState("");
 	const [fetchingDailyPrediction, setFetchingDailyPrediction] = useState(false);
+	const [refreshMetadata, setRefreshMetadata] = useState(null);
+	const [previewingAlert, setPreviewingAlert] = useState(false);
+	const [previewModalOpen, setPreviewModalOpen] = useState(false);
+	const [previewData, setPreviewData] = useState(null);
 
 	const readPageData = useCallback(async () => {
 		const [userResult, reportResult, dailyPredictionResult, monthlyProductionResult] = await Promise.allSettled([
@@ -67,13 +74,8 @@ const UserReportPage = () => {
 		setMonthlyProduction(pageData.monthlyProductionData);
 	}, []);
 
-	const loadPageData = useCallback(async (isRefresh = false) => {
-		if (isRefresh) {
-			setRefreshing(true);
-		} else {
-			setLoading(true);
-		}
-
+	const loadPageData = useCallback(async () => {
+		setLoading(true);
 		setError("");
 		setDailyPredictionError("");
 
@@ -86,9 +88,30 @@ const UserReportPage = () => {
 			setMonthlyProduction([]);
 		} finally {
 			setLoading(false);
-			setRefreshing(false);
 		}
 	}, [applyPageData, readPageData]);
+
+	const handleRefreshReport = useCallback(async () => {
+		setRefreshing(true);
+		setError("");
+		setRefreshMetadata(null);
+
+		try {
+			const refreshedData = await refreshSolarReportByUserId(userId);
+			// Also fetch the updated monthly production to reflect new comparisons
+			const monthlyProdResult = await fetchMonthlyProductionByUserId(userId);
+			
+			setReport(refreshedData.report);
+			if (refreshedData.metadata) {
+				setRefreshMetadata(refreshedData.metadata);
+			}
+			setMonthlyProduction(Array.isArray(monthlyProdResult) ? monthlyProdResult : []);
+		} catch (err) {
+			setError(err.message || "Failed to refresh report");
+		} finally {
+			setRefreshing(false);
+		}
+	}, [userId]);
 
 	const handleFetchDailyPredictionNow = useCallback(async () => {
 		setFetchingDailyPrediction(true);
@@ -108,6 +131,24 @@ const UserReportPage = () => {
 			setFetchingDailyPrediction(false);
 		}
 	}, [userId]);
+
+	const handlePreviewAlert = useCallback(async () => {
+		setPreviewingAlert(true);
+		try {
+			const latestDate = dailyPredictions[0]?.date || new Date().toISOString().split("T")[0];
+			const result = await fetchSOICPreviewAlert(userId, latestDate);
+			if (result) {
+				setPreviewData(result);
+				setPreviewModalOpen(true);
+			} else {
+				alert("No preview payload returned. This usually means the system is healthy.");
+			}
+		} catch (err) {
+			alert(`Preview Failed: ${err.message}`);
+		} finally {
+			setPreviewingAlert(false);
+		}
+	}, [userId, dailyPredictions]);
 
 	useEffect(() => {
 		if (!userId) {
@@ -172,7 +213,7 @@ const UserReportPage = () => {
 					</button>
 					<button 
 						type="button" 
-						onClick={() => loadPageData(true)}
+						onClick={handleRefreshReport}
 						disabled={refreshing}
 						className="w-full rounded-xl bg-gradient-to-r from-emerald-600 to-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:shadow-lg disabled:opacity-60"
 					>
@@ -192,8 +233,19 @@ const UserReportPage = () => {
 					)}
 				</div>
 
-				{loading && <p className="px-1 py-3 text-sm font-semibold text-blue-700">Generating report from AIML...</p>}
+				{loading && <p className="px-1 py-3 text-sm font-semibold text-blue-700">Loading report...</p>}
 				{error && <p className="px-1 py-3 text-sm font-semibold text-rose-700">{error}</p>}
+				{refreshMetadata && (
+					<div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 shadow-sm">
+						<p className="text-sm font-semibold text-emerald-800">Report refreshed successfully</p>
+						<div className="mt-1 flex flex-wrap gap-4 text-xs text-emerald-700">
+							<span>Last refreshed: {new Date(refreshMetadata.refreshed_at).toLocaleString()}</span>
+							<span>Model: {refreshMetadata.prediction_model}</span>
+							<span>Months Updated: {refreshMetadata.months_updated}</span>
+							<span>Unchanged: {refreshMetadata.months_unchanged}</span>
+						</div>
+					</div>
+				)}
 
 				{!loading && !error && (
 					<div className="grid items-start gap-4 lg:grid-cols-[320px_minmax(0,1fr)] xl:grid-cols-[340px_minmax(0,1fr)]">
@@ -264,15 +316,28 @@ const UserReportPage = () => {
 							) : (
 								<DailyPredictionTable
 									predictions={dailyPredictions}
+									loading={loading}
 									error={dailyPredictionError}
 									fetching={fetchingDailyPrediction}
 									onFetchNow={handleFetchDailyPredictionNow}
+									onPreviewAlert={handlePreviewAlert}
+									previewing={previewingAlert}
 								/>
 							)}
 						</div>
 					</div>
 				)}
 			</div>
+
+			<PreviewAlertModal
+				isOpen={previewModalOpen}
+				onClose={() => setPreviewModalOpen(false)}
+				previewData={previewData}
+				siteName={user?.name || "Unknown Site"}
+				businessDate={dailyPredictions[0]?.date || new Date().toISOString().split("T")[0]}
+				isRefreshing={previewingAlert}
+				onRefresh={handlePreviewAlert}
+			/>
 		</div>
 	);
 };

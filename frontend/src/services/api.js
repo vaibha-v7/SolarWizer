@@ -28,7 +28,17 @@ export const fetchUserById = async (userId) => {
 
 export const fetchSolarReportByUserId = async (userId) => {
 	const response = await fetch(`${API_BASE_URL}/users/${userId}/solar-report`);
-	return parseResponse(response, "Failed to generate solar report");
+	return parseResponse(response, "Failed to fetch solar report");
+};
+
+export const refreshSolarReportByUserId = async (userId) => {
+	const response = await fetch(`${API_BASE_URL}/users/${userId}/solar-report/refresh`, {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json"
+		}
+	});
+	return parseResponse(response, "Failed to refresh solar report");
 };
 
 export const fetchDailyPredictionsByUserId = async (userId) => {

@@ -51,7 +51,7 @@ const toComparableNumber = (value) => {
 	return Number.isFinite(numberValue) ? numberValue : null;
 };
 
-const DailyPredictionTable = ({ predictions = [], loading = false, error = "", fetching = false, onFetchNow }) => {
+const DailyPredictionTable = ({ predictions = [], loading = false, error = "", fetching = false, onFetchNow, onPreviewAlert, previewing = false }) => {
 	const latestPrediction = predictions[0];
 	const totalPredicted = predictions.reduce((sum, prediction) => sum + Number(prediction.predicted_kwh ?? 0), 0);
 	const latestActual = toComparableNumber(latestPrediction?.inverter_real_time_kwh);
@@ -69,6 +69,14 @@ const DailyPredictionTable = ({ predictions = [], loading = false, error = "", f
 					<p className="mt-1 text-sm text-slate-600">Today and previous five fetched records, captured daily at 7 PM</p>
 				</div>
 				<div className="flex flex-wrap items-center gap-2">
+					<button
+						type="button"
+						onClick={onPreviewAlert}
+						disabled={previewing || loading || !onPreviewAlert}
+						className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+					>
+						{previewing ? "Previewing..." : "Preview Alert"}
+					</button>
 					<button
 						type="button"
 						onClick={onFetchNow}
