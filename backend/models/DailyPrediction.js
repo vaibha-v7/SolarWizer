@@ -41,6 +41,41 @@ const dailyPredictionSchema = new mongoose.Schema(
 			type: String,
 			default: "N/A"
 		},
+		sample_type: {
+			type: String,
+			enum: ["INTRADAY", "FINAL"],
+			default: "INTRADAY",
+			index: true
+		},
+		source: {
+			type: String,
+			enum: ["manual_fetch", "daily_scheduler", "maintenance", "unknown"],
+			default: "unknown",
+			index: true
+		},
+		last_manual_fetch_at: {
+			type: Date,
+			default: null
+		},
+		last_scheduled_fetch_at: {
+			type: Date,
+			default: null
+		},
+		alert_evaluated_at: {
+			type: Date,
+			default: null,
+			index: true
+		},
+		alert_evaluation_id: {
+			type: String,
+			default: "",
+			index: true
+		},
+		finalized_at: {
+			type: Date,
+			default: null,
+			index: true
+		},
 		createdAt: {
 			type: Date,
 			default: Date.now,
@@ -50,7 +85,8 @@ const dailyPredictionSchema = new mongoose.Schema(
 	{ timestamps: true }
 );
 
-// Compound index for efficient queries
+// One logical prediction per site per business date.
+dailyPredictionSchema.index({ userId: 1, date: 1 }, { unique: true });
 dailyPredictionSchema.index({ userId: 1, date: -1 });
 
 module.exports = mongoose.model("DailyPrediction", dailyPredictionSchema);

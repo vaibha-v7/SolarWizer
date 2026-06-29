@@ -3,7 +3,8 @@ const {
 	createUserData,
 	listUserData,
 	getUserDataById,
-	generateSolarReportForUser,
+	getSolarReportForUser,
+	refreshSolarReportForUser,
 	deleteUserData,
 	updateUserData,
 	getMonthlyProductionForUser
@@ -14,8 +15,9 @@ const router = express.Router();
 router.post("/enter", createUserData);
 router.get("/users", listUserData);
 router.get("/users/:userId", getUserDataById);
-router.get("/users/:userId/solar-report", generateSolarReportForUser);
-router.get("/:userId/solar-report", generateSolarReportForUser);
+router.get("/users/:userId/solar-report", getSolarReportForUser);
+router.get("/:userId/solar-report", getSolarReportForUser);
+router.post("/users/:userId/solar-report/refresh", refreshSolarReportForUser);
 router.get("/users/:userId/monthly-production", getMonthlyProductionForUser);
 router.put("/users/:userId", updateUserData);
 router.delete("/users/:userId", deleteUserData);

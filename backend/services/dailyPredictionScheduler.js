@@ -1,211 +1,278 @@
 const cron = require("node-cron");
 const DailyPrediction = require("../models/DailyPrediction");
-const UserData = require("../models/data");
-const { getTodayInverterGeneration } = require("./inverterTelemetryService");
+const { collectAndStoreDailyPredictions } = require("./predictionCollectionService");
 const { sendPositiveProductionEmails } = require("./positiveProductionEmailService");
+const { runDailyAlertEvaluation } = require("./soicAlertScheduler");
+const { runSoicPipeline } = require("./soicScheduler");
+const {
+	appendStageResult,
+	createPipelineId,
+	finishPipelineRun,
+	recordHealthMetric,
+	startPipelineRun
+} = require("./pipelineTelemetryService");
+const { TIMEZONE, getTodayDateString, normalizeDateString } = require("../utils/dateUtils");
 
-const AIML_BASE_URL = process.env.AIML_BASE_URL || process.env.AIML_API_URL || "http://127.0.0.1:8000";
-const DAILY_PREDICTION_TIMEZONE = process.env.DAILY_PREDICTION_TIMEZONE || "Asia/Kolkata";
+let dailyPredictionJob;
 
-const isFiniteNumber = (value) => Number.isFinite(Number(value));
+const buildPipelineFailure = (message, details = {}) => ({
+	message,
+	...details
+});
 
-const formatKwh = (value) => {
-	const numberValue = Number(value);
-	return Number.isFinite(numberValue) ? Number(numberValue.toFixed(2)) : null;
-};
-
-const getDailyPredictionDate = (date = new Date()) => date.toISOString().split("T")[0];
-
-async function fetchJsonWithTimeout(url, timeoutMs = 30000) {
-	const controller = new AbortController();
-	const timeout = setTimeout(() => controller.abort(), timeoutMs);
-
-	try {
-		const response = await fetch(url, { signal: controller.signal });
-
-		if (!response.ok) {
-			throw new Error(`AIML API returned ${response.status}`);
-		}
-
-		return response.json();
-	} finally {
-		clearTimeout(timeout);
-	}
-}
-
-/**
- * Fetch daily prediction from AIML API and store in database
- * Keeps rolling 6-day window (today + previous 5 days)
- */
 async function fetchAndStoreDailyPredictions(options = {}) {
-	const result = {
-		totalUsers: 0,
-		stored: 0,
-		skipped: 0,
-		failed: 0,
-		emailNotifications: null,
-		errors: []
-	};
-
-	try {
-		console.log(`[Daily Prediction] Starting fetch at ${new Date().toISOString()}`);
-
-		const query = options.userId ? { _id: options.userId } : {};
-		const users = await UserData.find(query);
-		result.totalUsers = users.length;
-
-		if (!users.length) {
-			console.log("[Daily Prediction] No users found");
-			return result;
-		}
-
-		const today = getDailyPredictionDate();
-		const cutoffDate = new Date();
-		cutoffDate.setDate(cutoffDate.getDate() - 5);
-		const cutoffDateStr = getDailyPredictionDate(cutoffDate);
-
-		for (const user of users) {
-			try {
-				const latitude = user.location?.latitude;
-				const longitude = user.location?.longitude;
-				const { systemCapacity, tiltDeg, azimuthDeg, inverterSerialNumber, siteId } = user;
-
-				if (
-					!isFiniteNumber(latitude) ||
-					!isFiniteNumber(longitude) ||
-					!isFiniteNumber(systemCapacity) ||
-					!isFiniteNumber(tiltDeg) ||
-					!isFiniteNumber(azimuthDeg)
-				) {
-					console.log(`[Daily Prediction] Skipping user ${user._id} - missing location/system data`);
-					result.skipped += 1;
-					result.errors.push({
-						userId: String(user._id),
-						message: "Missing location or system data"
-					});
-					continue;
-				}
-
-				const aimlUrl = new URL("/predict-today", AIML_BASE_URL);
-				aimlUrl.searchParams.append("lat", latitude);
-				aimlUrl.searchParams.append("lon", longitude);
-				aimlUrl.searchParams.append("capacity_kw", systemCapacity);
-				aimlUrl.searchParams.append("tilt", tiltDeg);
-				aimlUrl.searchParams.append("azimuth", azimuthDeg);
-
-				const prediction = await fetchJsonWithTimeout(aimlUrl.toString());
-				let inverterGenerationToday = "N/A";
-				let differenceKwh = null;
-				let comparison = "N/A";
-
-				try {
-					inverterGenerationToday = await getTodayInverterGeneration({
-						inverterSerialNumber,
-						siteId,
-						fetchJsonWithTimeout,
-						baseUrl: AIML_BASE_URL
-					});
-				} catch (inverterError) {
-					console.error(
-						`[Daily Prediction] Inverter generation fetch failed for user ${user._id}:`,
-						inverterError.message
-					);
-				}
-
-				const predictedKwh = formatKwh(prediction.daily_energy_kwh);
-				const inverterKwh = formatKwh(inverterGenerationToday);
-
-				if (predictedKwh !== null && inverterKwh !== null) {
-					differenceKwh = Number((inverterKwh - predictedKwh).toFixed(2));
-					if (differenceKwh > 0) comparison = "greater";
-					else if (differenceKwh < 0) comparison = "lesser";
-					else comparison = "equal";
-				}
-
-				await DailyPrediction.findOneAndUpdate(
-					{ userId: user._id, date: today },
-					{
-						userId: user._id,
-						date: today,
-						predicted_kwh: prediction.daily_energy_kwh || 0,
-						peak_power_kw: prediction.peak_power_kw || 0,
-						avg_temperature: prediction.avg_temperature || 0,
-						avg_cloud_cover: prediction.avg_cloud_cover || 0,
-						inverter_real_time_kwh: inverterGenerationToday,
-						difference_kwh: differenceKwh,
-						comparison
-					},
-					{ upsert: true, returnDocument: "after" }
-				);
-
-				console.log(`[Daily Prediction] Stored prediction for user ${user._id} on ${today}`);
-				result.stored += 1;
-
-				await DailyPrediction.deleteMany({
-					userId: user._id,
-					date: { $lt: cutoffDateStr }
-				});
-
-				console.log(`[Daily Prediction] Cleaned old predictions for user ${user._id} before ${cutoffDateStr}`);
-			} catch (err) {
-				console.error(`[Daily Prediction] Error processing user ${user._id}:`, err.message);
-				result.failed += 1;
-				result.errors.push({
-					userId: String(user._id),
-					message: err.message
-				});
-			}
-		}
-
-		if (process.env.POSITIVE_PRODUCTION_EMAILS_DISABLED !== "true") {
-			try {
-				result.emailNotifications = await sendPositiveProductionEmails({
-					date: today,
-					userId: options.userId
-				});
-			} catch (emailError) {
-				console.error("[Daily Prediction] Positive production email notification failed:", emailError.message);
-				result.errors.push({
-					message: `Positive production email notification failed: ${emailError.message}`
-				});
-			}
-		}
-
-		console.log("[Daily Prediction] Batch fetch completed successfully");
-	} catch (err) {
-		console.error("[Daily Prediction] Scheduler error:", err.message);
-		result.failed += 1;
-		result.errors.push({ message: err.message });
-	}
-
-	return result;
+	return collectAndStoreDailyPredictions({
+		...options,
+		source: options.source || "daily_scheduler",
+		sampleType: options.sampleType || "FINAL",
+		activeOnly: options.activeOnly !== false,
+		allowOverwriteFinalized: false
+	});
 }
 
-/**
- * Initialize the daily prediction scheduler
- * Runs every day at 7 PM (19:00) in the configured timezone
- */
-function initializeDailyPredictionScheduler() {
-	const job = cron.schedule("0 19 * * *", fetchAndStoreDailyPredictions, {
-		scheduled: true,
-		timezone: DAILY_PREDICTION_TIMEZONE
+async function runDailyPipeline(options = {}) {
+	const businessDate = normalizeDateString(options.date || getTodayDateString());
+	const pipelineId = options.pipelineId || createPipelineId("daily-pipeline");
+	const failures = [];
+	const warnings = [];
+
+	await startPipelineRun({
+		pipelineId,
+		pipelineType: "daily_evaluation",
+		source: options.source || "daily_scheduler",
+		businessDate,
+		metadata: {
+			alertsAllowed: true
+		}
 	});
 
-	console.log(`[Daily Prediction] Scheduler initialized - runs daily at 7 PM ${DAILY_PREDICTION_TIMEZONE}`);
+	await recordHealthMetric("pipeline_status", {
+		status: "RUNNING",
+		pipeline_id: pipelineId,
+		business_date: businessDate,
+		at: new Date().toISOString()
+	});
 
-	return job;
+	try {
+		const predictionResult = await fetchAndStoreDailyPredictions({
+			date: businessDate,
+			pipelineId,
+			source: "daily_scheduler",
+			sampleType: "FINAL"
+		});
+		await appendStageResult(pipelineId, "prediction_generation", predictionResult);
+		await recordHealthMetric("last_prediction_run", {
+			pipeline_id: pipelineId,
+			business_date: businessDate,
+			at: new Date().toISOString(),
+			stored: predictionResult.stored,
+			updated: predictionResult.updated,
+			skipped: predictionResult.skipped,
+			failed: predictionResult.failed
+		});
+
+		if (!predictionResult.expectedSites) {
+			failures.push(buildPipelineFailure("No expected sites discovered"));
+		}
+
+		if (predictionResult.failed > 0) {
+			failures.push(buildPipelineFailure("Prediction generation had failures", {
+				failed: predictionResult.failed,
+				errors: predictionResult.errors
+			}));
+		}
+
+		const storedForDate = await DailyPrediction.countDocuments({ date: businessDate });
+		if (storedForDate < predictionResult.expectedSites) {
+			failures.push(buildPipelineFailure("DailyPrediction validation failed before alert evaluation", {
+				expected: predictionResult.expectedSites,
+				storedForDate
+			}));
+		}
+
+		if (failures.length) {
+			await finishPipelineRun(pipelineId, {
+				status: "FAILED",
+				sites_expected: predictionResult.expectedSites,
+				sites_processed: predictionResult.stored + predictionResult.updated,
+				sites_skipped: predictionResult.skipped,
+				failures,
+				warnings
+			});
+			await recordHealthMetric("last_failed_pipeline", {
+				pipeline_id: pipelineId,
+				business_date: businessDate,
+				at: new Date().toISOString(),
+				failures
+			});
+			await recordHealthMetric("pipeline_status", {
+				status: "FAILED",
+				pipeline_id: pipelineId,
+				business_date: businessDate,
+				at: new Date().toISOString()
+			});
+			return {
+				pipelineId,
+				status: "FAILED",
+				prediction: predictionResult,
+				failures
+			};
+		}
+
+		let positiveProductionEmails = null;
+		if (process.env.POSITIVE_PRODUCTION_EMAILS_DISABLED !== "true") {
+			try {
+				positiveProductionEmails = await sendPositiveProductionEmails({ date: businessDate });
+			} catch (emailError) {
+				warnings.push(buildPipelineFailure("Positive production email notification failed", {
+					message: emailError.message
+				}));
+			}
+		}
+		await appendStageResult(pipelineId, "positive_production_emails", positiveProductionEmails);
+
+		const alertResult = await runDailyAlertEvaluation({
+			date: businessDate,
+			pipelineId,
+			source: "daily_scheduler",
+			allowBeforeCutoff: Boolean(options.allowBeforeCutoff)
+		});
+		await appendStageResult(pipelineId, "alert_evaluation", alertResult);
+
+		if (alertResult.status === "FAILED") {
+			await finishPipelineRun(pipelineId, {
+				status: "FAILED",
+				sites_expected: predictionResult.expectedSites,
+				sites_processed: alertResult.sitesProcessed || 0,
+				sites_skipped: alertResult.sitesSkipped || 0,
+				alerts_created: alertResult.alertsCreated || 0,
+				alerts_escalated: alertResult.alertsEscalated || 0,
+				alerts_resolved: alertResult.alertsResolved || 0,
+				notifications_sent: alertResult.notificationsSent || 0,
+				failures: [...failures, ...(alertResult.failures || [])],
+				warnings: [...warnings, ...(alertResult.warnings || [])]
+			});
+			await recordHealthMetric("last_failed_pipeline", {
+				pipeline_id: pipelineId,
+				business_date: businessDate,
+				at: new Date().toISOString(),
+				failures: alertResult.failures || []
+			});
+			return {
+				pipelineId,
+				status: "FAILED",
+				prediction: predictionResult,
+				alert: alertResult
+			};
+		}
+
+		let performanceResult = null;
+		if (alertResult.status === "SUCCESS" || alertResult.status === "SKIPPED") {
+			try {
+				performanceResult = await runSoicPipeline({
+					date: businessDate,
+					pipelineId,
+					source: "daily_pipeline"
+				});
+				await recordHealthMetric("last_performance_run", {
+					pipeline_id: pipelineId,
+					business_date: businessDate,
+					at: new Date().toISOString(),
+					...performanceResult
+				});
+			} catch (performanceError) {
+				warnings.push(buildPipelineFailure("SOIC performance pipeline failed", {
+					message: performanceError.message
+				}));
+			}
+		}
+		await appendStageResult(pipelineId, "performance_pipeline", performanceResult);
+
+		const finalStatus = alertResult.status === "SKIPPED" ? "SKIPPED" : "SUCCESS";
+		await finishPipelineRun(pipelineId, {
+			status: finalStatus,
+			sites_expected: predictionResult.expectedSites,
+			sites_processed: alertResult.sitesProcessed || 0,
+			sites_skipped: alertResult.sitesSkipped || 0,
+			alerts_created: alertResult.alertsCreated || 0,
+			alerts_escalated: alertResult.alertsEscalated || 0,
+			alerts_resolved: alertResult.alertsResolved || 0,
+			notifications_sent: alertResult.notificationsSent || 0,
+			failures,
+			warnings: [...warnings, ...(alertResult.warnings || [])]
+		});
+
+		await recordHealthMetric("last_successful_pipeline", {
+			pipeline_id: pipelineId,
+			business_date: businessDate,
+			at: new Date().toISOString(),
+			status: finalStatus
+		});
+		await recordHealthMetric("pipeline_status", {
+			status: finalStatus,
+			pipeline_id: pipelineId,
+			business_date: businessDate,
+			at: new Date().toISOString()
+		});
+
+		return {
+			pipelineId,
+			status: finalStatus,
+			prediction: predictionResult,
+			alert: alertResult,
+			performance: performanceResult,
+			positiveProductionEmails,
+			warnings
+		};
+	} catch (error) {
+		const failure = buildPipelineFailure("Daily pipeline failed", { message: error.message });
+		await finishPipelineRun(pipelineId, {
+			status: "FAILED",
+			failures: [failure],
+			warnings
+		});
+		await recordHealthMetric("last_failed_pipeline", {
+			pipeline_id: pipelineId,
+			business_date: businessDate,
+			at: new Date().toISOString(),
+			failures: [failure]
+		});
+		await recordHealthMetric("pipeline_status", {
+			status: "FAILED",
+			pipeline_id: pipelineId,
+			business_date: businessDate,
+			at: new Date().toISOString()
+		});
+		throw error;
+	}
 }
 
-/**
- * Manual trigger for testing (can be called from route)
- */
-async function triggerDailyPredictionFetch(options = {}) {
-	console.log("[Daily Prediction] Manual trigger initiated");
-	return fetchAndStoreDailyPredictions(options);
+function initializeDailyPredictionScheduler() {
+	if (dailyPredictionJob) return dailyPredictionJob;
+
+	dailyPredictionJob = cron.schedule("0 19 * * *", () => {
+		runDailyPipeline().catch((error) => {
+			console.error("[Daily Pipeline] Scheduler execution failure:", error.message);
+		});
+	}, {
+		scheduled: true,
+		timezone: TIMEZONE
+	});
+
+	recordHealthMetric("scheduler_status", {
+		daily_prediction_scheduler: "RUNNING",
+		alert_scheduler: "PIPELINE_GATED",
+		soic_performance_scheduler: "PIPELINE_GATED",
+		timezone: TIMEZONE,
+		at: new Date().toISOString()
+	});
+
+	console.log(`[Daily Prediction] Scheduler initialized - runs daily at 7 PM ${TIMEZONE}`);
+	return dailyPredictionJob;
 }
 
 module.exports = {
 	initializeDailyPredictionScheduler,
-	triggerDailyPredictionFetch,
-	fetchAndStoreDailyPredictions
+	fetchAndStoreDailyPredictions,
+	runDailyPipeline
 };

@@ -560,7 +560,7 @@ const SOICDashboard = () => {
 		setLoading(true);
 		setError("");
 		try {
-			const dashboard = await fetchSOICDashboard(true);
+			const dashboard = await fetchSOICDashboard();
 			if (dashboard) {
 				setMetrics(dashboard.metrics || EMPTY_METRICS);
 				setActiveAlerts(dashboard.active_alerts || []);

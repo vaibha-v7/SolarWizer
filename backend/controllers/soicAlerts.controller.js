@@ -4,7 +4,8 @@ const { buildAlertReportWorkbook } = require("../services/excelAlertService");
 const Alert = require("../models/Alert");
 const AlertHistory = require("../models/AlertHistory");
 const SiteMonitoringState = require("../models/SiteMonitoringState");
-const { resolveAlert: engineResolveAlert } = require("../services/soicAlertEngine");
+const { resolveAlert: engineResolveAlert, previewSiteEvaluation, evaluateAllSites } = require("../services/soicAlertEngine");
+const { getOperationalHealth: readOperationalHealth } = require("../services/pipelineTelemetryService");
 
 // --- UTILITIES ---
 const calculateHistoryMetrics = (history) => {
@@ -79,7 +80,13 @@ exports.getDashboard = async (req, res) => {
 			return acc;
 		}, {});
 
-		const populatedAlerts = openAlerts.map(alert => ({
+		// Only include alerts where the user still exists (isn't soft or hard deleted)
+		const activeUsers = await UserData.find({ isDeleted: { $ne: true }, status: { $ne: "deleted" } }).lean();
+		const validUserIds = new Set(activeUsers.map(u => u._id.toString()));
+
+		const validOpenAlerts = openAlerts.filter(a => validUserIds.has(a.user_id.toString()));
+
+		const populatedAlerts = validOpenAlerts.map(alert => ({
 			...alert,
 			performance_window: statesMap[alert.user_id.toString()]?.performance_window || []
 		}));
@@ -89,10 +96,9 @@ exports.getDashboard = async (req, res) => {
 		const offline_sites = populatedAlerts.filter(a => a.severity === "OFFLINE");
 
 		// Derived Active Sites
-		const activeUsers = await UserData.find({ isDeleted: { $ne: true }, status: { $ne: "deleted" } }).lean();
 		const active_sites = [];
 		for (const user of activeUsers) {
-			const hasOpenAlert = openAlerts.some(a => a.user_id.toString() === user._id.toString());
+			const hasOpenAlert = validOpenAlerts.some(a => a.user_id.toString() === user._id.toString());
 			if (!hasOpenAlert) {
 				const state = statesMap[user._id.toString()];
 				let latestPerfStr = "N/A";
@@ -133,6 +139,15 @@ exports.getDashboard = async (req, res) => {
 				offline_sites
 			}
 		});
+	} catch (error) {
+		res.status(500).json({ success: false, message: error.message });
+	}
+};
+
+exports.getOperationalHealth = async (req, res) => {
+	try {
+		const health = await readOperationalHealth();
+		res.status(200).json({ success: true, data: health });
 	} catch (error) {
 		res.status(500).json({ success: false, message: error.message });
 	}
@@ -413,5 +428,34 @@ exports.generateReportExcel = async (req, res) => {
 		res.end();
 	} catch (error) {
 		res.status(500).send(error.message);
+	}
+};
+exports.previewAlertEvaluation = async (req, res) => {
+	try {
+		const { userId } = req.params;
+		const { date } = req.query;
+		const user = await UserData.findById(userId);
+		if (!user || user.isDeleted) {
+			return res.status(404).json({ success: false, message: "User not found" });
+		}
+		
+		const preview = await previewSiteEvaluation({ user, date });
+		res.status(200).json({ success: true, data: preview });
+	} catch (error) {
+		res.status(500).json({ success: false, message: error.message });
+	}
+};
+
+exports.runManualEvaluation = async (req, res) => {
+	try {
+		const { confirm } = req.body;
+		if (!confirm) {
+			return res.status(400).json({ success: false, message: "Manual evaluation requires 'confirm: true' in body" });
+		}
+		
+		const result = await evaluateAllSites({ forceReevaluate: true });
+		res.status(200).json({ success: true, data: result });
+	} catch (error) {
+		res.status(500).json({ success: false, message: error.message });
 	}
 };

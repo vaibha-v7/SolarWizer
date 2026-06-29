@@ -3,38 +3,13 @@ const MonthlyData = require("../models/monthlydata");
 const DailyPrediction = require("../models/DailyPrediction");
 const SiteDailyPerformance = require("../models/SiteDailyPerformance");
 const UserMonthlyProduction = require("../models/UserMonthlyProduction");
+const SiteMonitoringState = require("../models/SiteMonitoringState");
+const Alert = require("../models/Alert");
+const AlertHistory = require("../models/AlertHistory");
 
 const AIML_API_URL = process.env.AIML_API_URL || "http://127.0.0.1:8000";
 
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-const normalizeMonthlyEnergy = (monthlyEnergy = {}) => {
-	const normalized = {};
-
-	MONTHS.forEach((month) => {
-		normalized[month] = Number(monthlyEnergy[month] ?? 0);
-	});
-
-	return normalized;
-};
-
-const mapUserToAimlPayload = (user) => ({
-	lat: user.location.latitude,
-	lon: user.location.longitude,
-	system_size_kw: user.systemCapacity,
-	tilt: user.tiltDeg,
-	azimuth: user.azimuthDeg,
-	shading_factor: user.shadingFactor,
-	dc_ac_ratio: user.dc_ac_ratio ?? 1.2,
-	inv_efficiency: user.inv_efficiency ?? 98,
-	bifaciality: user.bifaciality ?? 0,
-	losses: [
-		user.soilingLossPercent,
-		user.inverterLossPercent,
-		user.wiringLossPercent,
-		user.miscLossPercent
-	]
-});
 
 const createUserData = async (req, res) => {
 	try {
@@ -89,77 +64,44 @@ const getUserDataById = async (req, res) => {
 	}
 };
 
-const generateSolarReportForUser = async (req, res) => {
+const { refreshSolarReportForUser: executeAnalyticsRefresh } = require("../services/analyticsRefreshService");
+
+const getSolarReportForUser = async (req, res) => {
 	try {
 		const { userId } = req.params;
-
-		const user = await UserData.findById(userId);
-		if (!user) {
+		const report = await MonthlyData.findOne({ userDataId: userId }).lean();
+		
+		if (!report) {
 			return res.status(404).json({
-				message: "User data not found"
+				message: "Solar report not found. Please click Refresh Report to generate one."
 			});
 		}
-
-		const aimlPayload = mapUserToAimlPayload(user);
-		// Call both pvgis (/predict1) and pvwatts (/predict2)
-		let pvgisPrediction = null;
-		let pvwattsPrediction = null;
-
-		try {
-			const resp1 = await fetch(`${AIML_API_URL}/predict1`, {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify(aimlPayload)
-			});
-
-			if (resp1.ok) pvgisPrediction = await resp1.json();
-		} catch (e) {
-			// continue
-		}
-
-		try {
-			const resp2 = await fetch(`${AIML_API_URL}/predict2`, {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify(aimlPayload)
-			});
-
-			if (resp2.ok) pvwattsPrediction = await resp2.json();
-		} catch (e) {
-			// continue
-		}
-
-		// Prefer pvgis for the main report values; fall back to pvwatts when missing
-		const primary = pvgisPrediction || pvwattsPrediction || {};
-
-		const reportPayload = {
-			userDataId: user._id,
-			annual_energy_kwh: Number(primary.annual_energy_kwh ?? 0),
-			monthly_energy_kwh: normalizeMonthlyEnergy(primary.monthly_energy_kwh),
-			performance_ratio: Number(primary.performance_ratio ?? 0),
-			forecast_7_days: Array.isArray(primary.forecast_7_days) ? primary.forecast_7_days : [],
-			pvgis: pvgisPrediction ?? {},
-			pvwatts: pvwattsPrediction ?? {}
-		};
-
-		const monthlyReport = await MonthlyData.findOneAndUpdate(
-			{ userDataId: user._id },
-			reportPayload,
-			{
-				returnDocument: "after",
-				upsert: true,
-				runValidators: true,
-				setDefaultsOnInsert: true
-			}
-		);
 
 		return res.status(200).json({
-			message: "Solar report generated successfully",
-			data: monthlyReport
+			message: "Solar report fetched successfully",
+			data: report
 		});
 	} catch (error) {
 		return res.status(500).json({
-			message: "Failed to generate solar report",
+			message: "Failed to fetch solar report",
+			error: error.message
+		});
+	}
+};
+
+const refreshSolarReportForUser = async (req, res) => {
+	try {
+		const { userId } = req.params;
+		
+		const { report, metadata } = await executeAnalyticsRefresh(userId);
+
+		return res.status(200).json({
+			message: "Solar report regenerated successfully",
+			data: { report, metadata }
+		});
+	} catch (error) {
+		return res.status(500).json({
+			message: "Failed to regenerate solar report",
 			error: error.message
 		});
 	}
@@ -182,7 +124,10 @@ const deleteUserData = async (req, res) => {
 			MonthlyData.deleteOne({ userDataId: userId }),
 			DailyPrediction.deleteMany({ userId: userId }),
 			SiteDailyPerformance.deleteMany({ user_id: userId }),
-			UserMonthlyProduction.deleteMany({ userId: userId })
+			UserMonthlyProduction.deleteMany({ userId: userId }),
+			SiteMonitoringState.deleteOne({ user_id: userId }),
+			Alert.deleteMany({ user_id: userId }),
+			AlertHistory.deleteMany({ user_id: userId })
 		]);
 
 		return res.status(200).json({
@@ -289,7 +234,8 @@ module.exports = {
 	createUserData,
 	listUserData,
 	getUserDataById,
-	generateSolarReportForUser,
+	getSolarReportForUser,
+	refreshSolarReportForUser,
 	deleteUserData,
 	updateUserData,
 	getMonthlyProductionForUser
