@@ -6,6 +6,7 @@ import StatsStrip from "../components/StatsStrip";
 import UserProfileCard from "../components/UserProfileCard";
 import {
 	fetchDailyPredictionsByUserId,
+	fetchMonthlyProductionByUserId,
 	fetchSolarReportByUserId,
 	fetchUserById,
 	triggerDailyPredictionByUserId
@@ -18,6 +19,7 @@ const UserReportPage = () => {
 	const [user, setUser] = useState(null);
 	const [report, setReport] = useState(null);
 	const [dailyPredictions, setDailyPredictions] = useState([]);
+	const [monthlyProduction, setMonthlyProduction] = useState([]);
 	const [reportSource, setReportSource] = useState("pvgis");
 	const [activeReportTab, setActiveReportTab] = useState("daily");
 	const [loading, setLoading] = useState(true);
@@ -27,10 +29,11 @@ const UserReportPage = () => {
 	const [fetchingDailyPrediction, setFetchingDailyPrediction] = useState(false);
 
 	const readPageData = useCallback(async () => {
-		const [userResult, reportResult, dailyPredictionResult] = await Promise.allSettled([
+		const [userResult, reportResult, dailyPredictionResult, monthlyProductionResult] = await Promise.allSettled([
 			fetchUserById(userId),
 			fetchSolarReportByUserId(userId),
-			fetchDailyPredictionsByUserId(userId)
+			fetchDailyPredictionsByUserId(userId),
+			fetchMonthlyProductionByUserId(userId)
 		]);
 
 		if (userResult.status === "rejected") {
@@ -49,7 +52,10 @@ const UserReportPage = () => {
 				: [],
 			dailyPredictionErrorMessage: dailyPredictionResult.status === "rejected"
 				? dailyPredictionResult.reason?.message || "Daily prediction history is unavailable."
-				: ""
+				: "",
+			monthlyProductionData: monthlyProductionResult.status === "fulfilled" && Array.isArray(monthlyProductionResult.value)
+				? monthlyProductionResult.value
+				: []
 		};
 	}, [userId]);
 
@@ -58,6 +64,7 @@ const UserReportPage = () => {
 		setReport(pageData.reportData);
 		setDailyPredictions(pageData.dailyPredictionData);
 		setDailyPredictionError(pageData.dailyPredictionErrorMessage);
+		setMonthlyProduction(pageData.monthlyProductionData);
 	}, []);
 
 	const loadPageData = useCallback(async (isRefresh = false) => {
@@ -76,6 +83,7 @@ const UserReportPage = () => {
 		} catch (err) {
 			setError(err.message || "Failed to load report");
 			setDailyPredictions([]);
+			setMonthlyProduction([]);
 		} finally {
 			setLoading(false);
 			setRefreshing(false);
@@ -88,8 +96,12 @@ const UserReportPage = () => {
 
 		try {
 			await triggerDailyPredictionByUserId(userId);
-			const predictionData = await fetchDailyPredictionsByUserId(userId);
+			const [predictionData, monthlyData] = await Promise.all([
+				fetchDailyPredictionsByUserId(userId),
+				fetchMonthlyProductionByUserId(userId)
+			]);
 			setDailyPredictions(Array.isArray(predictionData) ? predictionData : []);
+			setMonthlyProduction(Array.isArray(monthlyData) ? monthlyData : []);
 		} catch (err) {
 			setDailyPredictionError(err.message || "Failed to fetch daily prediction now.");
 		} finally {
@@ -244,7 +256,10 @@ const UserReportPage = () => {
 							{activeReportTab === "monthly" ? (
 								<>
 									<StatsStrip report={selectedReportData} source={reportSource} />
-									<MonthlyLineChartWithTable monthlyData={selectedReportData?.monthly_energy_kwh} />
+									<MonthlyLineChartWithTable 
+										predictions={selectedReportData?.monthly_energy_kwh} 
+										actuals={monthlyProduction} 
+									/>
 								</>
 							) : (
 								<DailyPredictionTable

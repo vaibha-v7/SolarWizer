@@ -137,7 +137,7 @@ const DailyPredictionTable = ({ predictions = [], loading = false, error = "", f
 								<th className="border-b border-slate-200 bg-blue-50/70 px-3 py-3 text-xs font-bold uppercase tracking-wide text-slate-600">Difference (kWh)</th>
 								<th className="border-b border-slate-200 bg-blue-50/70 px-3 py-3 text-xs font-bold uppercase tracking-wide text-slate-600">Comparison</th>
 								<th className="border-b border-slate-200 bg-blue-50/70 px-3 py-3 text-xs font-bold uppercase tracking-wide text-slate-600">Peak Power (kW)</th>
-								<th className="border-b border-slate-200 bg-blue-50/70 px-3 py-3 text-xs font-bold uppercase tracking-wide text-slate-600">Avg Temp (C)</th>
+								<th className="border-b border-slate-200 bg-blue-50/70 px-3 py-3 text-xs font-bold uppercase tracking-wide text-slate-600">Temp (C)</th>
 								<th className="border-b border-slate-200 bg-blue-50/70 px-3 py-3 text-xs font-bold uppercase tracking-wide text-slate-600">Cloud Cover (%)</th>
 							</tr>
 						</thead>
